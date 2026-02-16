@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Audit Logs - HealSync Admin</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, sans-serif;
+            background: #f5f7fa;
+            color: #2d3748;
+        }
+
+        .navbar {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .navbar h1 {
+            font-size: 1.5rem;
+            font-weight: 700;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+        }
+
+        .nav-link {
+            color: white;
+            text-decoration: none;
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            transition: background 0.3s;
+        }
+
+        .nav-link:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 2rem auto;
+            padding: 0 2rem;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+        }
+
+        .header h2 {
+            font-size: 2rem;
+            color: #2d3748;
+        }
+
+        .filters {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 16px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+            margin-bottom: 2rem;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+        }
+
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .filter-group label {
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: #4a5568;
+            margin-bottom: 0.5rem;
+        }
+
+        .filter-group select,
+        .filter-group input {
+            padding: 0.75rem;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 0.875rem;
+            transition: border-color 0.3s;
+        }
+
+        .filter-group select:focus,
+        .filter-group input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .table-container {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+            overflow: hidden;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        thead {
+            background: #f7fafc;
+            border-bottom: 2px solid #e2e8f0;
+        }
+
+        th {
+            padding: 1rem;
+            text-align: left;
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: #4a5568;
+        }
+
+        td {
+            padding: 1rem;
+            border-bottom: 1px solid #e2e8f0;
+            font-size: 0.875rem;
+        }
+
+        tbody tr {
+            transition: background 0.2s;
+        }
+
+        tbody tr:hover {
+            background: #f7fafc;
+        }
+
+        .action-badge {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .action-create {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .action-update {
+            background: #dbeafe;
+            color: #1e40af;
+        }
+
+        .action-delete {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .action-login {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 3rem;
+            color: #718096;
+        }
+
+        .spinner {
+            border: 3px solid #f3f4f6;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 1rem;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        .timestamp {
+            color: #718096;
+            font-size: 0.8125rem;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="navbar">
+        <h1>🏥 HealSync Admin</h1>
+        <div class="nav-links">
+            <a href="/admin/dashboard" class="nav-link">Dashboard</a>
+            <a href="/admin/appointments" class="nav-link">Appointments</a>
+            <span id="userEmail"></span>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="header">
+            <h2>📊 Audit Logs</h2>
+        </div>
+
+        <div class="filters">
+            <div class="filter-group">
+                <label>Action Type</label>
+                <select id="filterAction" onchange="loadLogs()">
+                    <option value="">All Actions</option>
+                    <option value="LOGIN">Login</option>
+                    <option value="CREATE">Create</option>
+                    <option value="UPDATE">Update</option>
+                    <option value="DELETE">Delete</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label>Entity Type</label>
+                <select id="filterEntity" onchange="loadLogs()">
+                    <option value="">All Entities</option>
+                    <option value="User">User</option>
+                    <option value="Doctor">Doctor</option>
+                    <option value="Appointment">Appointment</option>
+                    <option value="Report">Report</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label>From Date</label>
+                <input type="date" id="filterFromDate" onchange="loadLogs()">
+            </div>
+        </div>
+
+        <div id="loadingState" class="loading">
+            <div class="spinner"></div>
+            <p>Loading audit logs...</p>
+        </div>
+
+        <div id="logsTable" style="display: none;">
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Timestamp</th>
+                            <th>User</th>
+                            <th>Action</th>
+                            <th>Entity</th>
+                            <th>Entity ID</th>
+                            <th>IP Address</th>
+                        </tr>
+                    </thead>
+                    <tbody id="logsBody">
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Check authentication
+        const token = localStorage.getItem('jwtToken');
+        const userEmail = localStorage.getItem('userEmail');
+        const userRole = localStorage.getItem('userRole');
+
+        if (!token || userRole !== 'ADMIN') {
+            window.location.href = '/login';
+        }
+
+        document.getElementById('userEmail').textContent = userEmail || 'Admin';
+
+        // Load audit logs
+        async function loadLogs() {
+            document.getElementById('loadingState').style.display = 'block';
+            document.getElementById('logsTable').style.display = 'none';
+
+            // Simulate API call with sample data
+            setTimeout(() => {
+                const logs = [
+                    {
+                        timestamp: '2026-01-24 12:05:30',
+                        user: 'admin@healsync.com',
+                        action: 'LOGIN',
+                        entityType: 'User',
+                        entityId: 1,
+                        ipAddress: '192.168.1.100'
+                    },
+                    {
+                        timestamp: '2026-01-24 11:30:15',
+                        user: 'dr.smith@healsync.com',
+                        action: 'CREATE',
+                        entityType: 'Report',
+                        entityId: 5,
+                        ipAddress: '192.168.1.102'
+                    },
+                    {
+                        timestamp: '2026-01-24 10:45:20',
+                        user: 'admin@healsync.com',
+                        action: 'UPDATE',
+                        entityType: 'Appointment',
+                        entityId: 12,
+                        ipAddress: '192.168.1.100'
+                    },
+                    {
+                        timestamp: '2026-01-24 09:15:00',
+                        user: 'patient.john@example.com',
+                        action: 'CREATE',
+                        entityType: 'Appointment',
+                        entityId: 15,
+                        ipAddress: '192.168.1.105'
+                    },
+                    {
+                        timestamp: '2026-01-24 08:30:45',
+                        user: 'admin@healsync.com',
+                        action: 'CREATE',
+                        entityType: 'Doctor',
+                        entityId: 3,
+                        ipAddress: '192.168.1.100'
+                    }
+                ];
+
+                const tbody = document.getElementById('logsBody');
+                tbody.innerHTML = '';
+
+                logs.forEach(log => {
+                    const actionClass = `action-${log.action.toLowerCase()}`;
+                    const row = `
+                        <tr>
+                            <td class="timestamp">${log.timestamp}</td>
+                            <td>${log.user}</td>
+                            <td><span class="action-badge ${actionClass}">${log.action}</span></td>
+                            <td>${log.entityType}</td>
+                            <td>#${log.entityId}</td>
+                            <td>${log.ipAddress}</td>
+                        </tr>
+                    `;
+                    tbody.innerHTML += row;
+                });
+
+                document.getElementById('loadingState').style.display = 'none';
+                document.getElementById('logsTable').style.display = 'block';
+            }, 500);
+        }
+
+        // Load on page load
+        loadLogs();
+    </script>
+</body>
+
+</html>

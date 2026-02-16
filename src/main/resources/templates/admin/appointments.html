@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Appointments - HealSync Admin</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, sans-serif;
+            background: #f5f7fa;
+            color: #2d3748;
+        }
+
+        .navbar {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .navbar h1 {
+            font-size: 1.5rem;
+            font-weight: 700;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+        }
+
+        .nav-link {
+            color: white;
+            text-decoration: none;
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            transition: background 0.3s;
+        }
+
+        .nav-link:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 2rem auto;
+            padding: 0 2rem;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+        }
+
+        .header h2 {
+            font-size: 2rem;
+            color: #2d3748;
+        }
+
+        .filters {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 16px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+            margin-bottom: 2rem;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+        }
+
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .filter-group label {
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: #4a5568;
+            margin-bottom: 0.5rem;
+        }
+
+        .filter-group select,
+        .filter-group input {
+            padding: 0.75rem;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 0.875rem;
+            transition: border-color 0.3s;
+        }
+
+        .filter-group select:focus,
+        .filter-group input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .table-container {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+            overflow: hidden;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        thead {
+            background: #f7fafc;
+            border-bottom: 2px solid #e2e8f0;
+        }
+
+        th {
+            padding: 1rem;
+            text-align: left;
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: #4a5568;
+        }
+
+        td {
+            padding: 1rem;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        tbody tr {
+            transition: background 0.2s;
+        }
+
+        tbody tr:hover {
+            background: #f7fafc;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .status-requested {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .status-confirmed {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .status-completed {
+            background: #dbeafe;
+            color: #1e40af;
+        }
+
+        .status-cancelled {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 3rem;
+            color: #718096;
+        }
+
+        .spinner {
+            border: 3px solid #f3f4f6;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 1rem;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 4rem 2rem;
+            color: #718096;
+        }
+
+        .empty-state svg {
+            width: 64px;
+            height: 64px;
+            margin-bottom: 1rem;
+            opacity: 0.5;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="navbar">
+        <h1>🏥 HealSync Admin</h1>
+        <div class="nav-links">
+            <a href="/admin/dashboard" class="nav-link">Dashboard</a>
+            <a href="/admin/appointments" class="nav-link">Appointments</a>
+            <span id="userEmail"></span>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="header">
+            <h2>📅 All Appointments</h2>
+        </div>
+
+        <div class="filters">
+            <div class="filter-group">
+                <label>Status</label>
+                <select id="filterStatus" onchange="loadAppointments()">
+                    <option value="">All Statuses</option>
+                    <option value="REQUESTED">Requested</option>
+                    <option value="CONFIRMED">Confirmed</option>
+                    <option value="COMPLETED">Completed</option>
+                    <option value="CANCELLED">Cancelled</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label>From Date</label>
+                <input type="date" id="filterFromDate" onchange="loadAppointments()">
+            </div>
+            <div class="filter-group">
+                <label>To Date</label>
+                <input type="date" id="filterToDate" onchange="loadAppointments()">
+            </div>
+        </div>
+
+        <div id="loadingState" class="loading">
+            <div class="spinner"></div>
+            <p>Loading appointments...</p>
+        </div>
+
+        <div id="appointmentsTable" style="display: none;">
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Patient</th>
+                            <th>Doctor</th>
+                            <th>Date & Time</th>
+                            <th>Status</th>
+                            <th>Reason</th>
+                        </tr>
+                    </thead>
+                    <tbody id="appointmentsBody">
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div id="emptyState" class="empty-state" style="display: none;">
+            <p>📭 No appointments found</p>
+        </div>
+    </div>
+
+    <script>
+        // Check authentication
+        const token = localStorage.getItem('jwtToken');
+        const userEmail = localStorage.getItem('userEmail');
+        const userRole = localStorage.getItem('userRole');
+
+        if (!token || userRole !== 'ADMIN') {
+            window.location.href = '/login';
+        }
+
+        document.getElementById('userEmail').textContent = userEmail || 'Admin';
+
+        // Load appointments
+        async function loadAppointments() {
+            const status = document.getElementById('filterStatus').value;
+            const fromDate = document.getElementById('filterFromDate').value;
+            const toDate = document.getElementById('filterToDate').value;
+
+            document.getElementById('loadingState').style.display = 'block';
+            document.getElementById('appointmentsTable').style.display = 'none';
+            document.getElementById('emptyState').style.display = 'none';
+
+            // Simulate API call with seed data
+            setTimeout(() => {
+                const appointments = [
+                    {
+                        id: 1,
+                        patientName: 'John Doe',
+                        doctorName: 'Dr. Sarah Smith',
+                        dateTime: '2026-01-25 10:00 AM',
+                        status: 'CONFIRMED',
+                        reason: 'Regular checkup'
+                    },
+                    {
+                        id: 2,
+                        patientName: 'Jane Wilson',
+                        doctorName: 'Dr. Michael Johnson',
+                        dateTime: '2026-01-25 02:30 PM',
+                        status: 'REQUESTED',
+                        reason: 'Follow-up consultation'
+                    },
+                    {
+                        id: 3,
+                        patientName: 'Bob Smith',
+                        doctorName: 'Dr. Sarah Smith',
+                        dateTime: '2026-01-26 11:00 AM',
+                        status: 'COMPLETED',
+                        reason: 'Annual physical'
+                    }
+                ];
+
+                const tbody = document.getElementById('appointmentsBody');
+                tbody.innerHTML = '';
+
+                if (appointments.length === 0) {
+                    document.getElementById('loadingState').style.display = 'none';
+                    document.getElementById('emptyState').style.display = 'block';
+                    return;
+                }
+
+                appointments.forEach(apt => {
+                    const statusClass = `status-${apt.status.toLowerCase()}`;
+                    const row = `
+                        <tr>
+                            <td>#${apt.id}</td>
+                            <td>${apt.patientName}</td>
+                            <td>${apt.doctorName}</td>
+                            <td>${apt.dateTime}</td>
+                            <td><span class="status-badge ${statusClass}">${apt.status}</span></td>
+                            <td>${apt.reason}</td>
+                        </tr>
+                    `;
+                    tbody.innerHTML += row;
+                });
+
+                document.getElementById('loadingState').style.display = 'none';
+                document.getElementById('appointmentsTable').style.display = 'block';
+            }, 500);
+        }
+
+        // Load on page load
+        loadAppointments();
+    </script>
+</body>
+
+</html>

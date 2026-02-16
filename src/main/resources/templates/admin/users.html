@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manage Users - HealSync</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, sans-serif;
+            background: #f5f7fa;
+            color: #2d3748;
+        }
+
+        .navbar {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .navbar h1 {
+            font-size: 1.5rem;
+            font-weight: 700;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .btn-logout {
+            background: rgba(255, 255, 255, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-logout:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 2rem auto;
+            padding: 0 2rem;
+        }
+
+        .header-actions {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+        }
+
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 16px rgba(102, 126, 234, 0.3);
+        }
+
+        .card {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+            overflow: hidden;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th,
+        td {
+            padding: 1.25rem;
+            text-align: left;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        th {
+            background: #f8fafc;
+            font-weight: 600;
+            color: #4a5568;
+            font-size: 0.875rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        tr:hover {
+            background: #f8fafc;
+        }
+
+        .badge {
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .badge-admin {
+            background: #e9d8fd;
+            color: #6b46c1;
+        }
+
+        .badge-doctor {
+            background: #d1fae5;
+            color: #047857;
+        }
+
+        .badge-patient {
+            background: #dbeafe;
+            color: #1e40af;
+        }
+
+        .action-btn {
+            padding: 0.5rem;
+            border-radius: 6px;
+            border: none;
+            background: transparent;
+            cursor: pointer;
+            color: #718096;
+            transition: color 0.3s;
+        }
+
+        .action-btn:hover {
+            color: #667eea;
+            background: #edf2f7;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 3rem;
+            color: #718096;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="navbar">
+        <h1>🏥 HealSync Admin</h1>
+        <div class="user-info">
+            <span id="userEmail"></span>
+            <button class="btn-logout" onclick="logout()">Logout</button>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="header-actions">
+            <h2>User Management</h2>
+            <button class="btn btn-primary" onclick="alert('Create User Modal')">
+                <span>➕</span> Add User
+            </button>
+        </div>
+
+        <div class="card">
+            <div id="loadingState" class="loading">Loading users...</div>
+            <table id="usersTable" style="display: none;">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Email</th>
+                        <th>Role</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="usersTableBody">
+                    <!-- Rows will be populated by JS -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        const token = localStorage.getItem('jwtToken');
+        const userEmail = localStorage.getItem('userEmail');
+
+        if (!token) window.location.href = '/login';
+        document.getElementById('userEmail').textContent = userEmail;
+
+        async function loadUsers() {
+            // Simulate API call
+            setTimeout(() => {
+                const users = [
+                    { name: 'Alice Admin', email: 'admin@healsync.com', role: 'ADMIN', status: 'Active' },
+                    { name: 'Dr. John Smith', email: 'dr.smith@healsync.com', role: 'DOCTOR', status: 'Active' },
+                    { name: 'Jane Patient', email: 'patient.jane@example.com', role: 'PATIENT', status: 'Active' },
+                ];
+
+                const tbody = document.getElementById('usersTableBody');
+                tbody.innerHTML = users.map(user => `
+                    <tr>
+                        <td>
+                            <div style="font-weight: 500;">${user.name}</div>
+                        </td>
+                        <td>${user.email}</td>
+                        <td><span class="badge badge-${user.role.toLowerCase()}">${user.role}</span></td>
+                        <td><span style="color: #059669; font-weight: 500;">● ${user.status}</span></td>
+                        <td>
+                            <button class="action-btn" title="Edit">✏️</button>
+                            <button class="action-btn" title="Delete" style="color: #ef4444;">🗑️</button>
+                        </td>
+                    </tr>
+                `).join('');
+
+                document.getElementById('loadingState').style.display = 'none';
+                document.getElementById('usersTable').style.display = 'table';
+            }, 600);
+        }
+
+        loadUsers();
+
+        function logout() {
+            localStorage.clear();
+            window.location.href = '/login';
+        }
+    </script>
+</body>
+
+</html>

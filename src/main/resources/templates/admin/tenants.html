@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manage Tenants - HealSync</title>
+    <style>
+        /* Reuse similar styles for consistency */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, sans-serif;
+            background: #f5f7fa;
+            color: #2d3748;
+        }
+
+        .navbar {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .navbar h1 {
+            font-size: 1.5rem;
+            font-weight: 700;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .btn-logout {
+            background: rgba(255, 255, 255, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-logout:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 2rem auto;
+            padding: 0 2rem;
+        }
+
+        .header-actions {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+        }
+
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 16px rgba(102, 126, 234, 0.3);
+        }
+
+        .card {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+            overflow: hidden;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th,
+        td {
+            padding: 1.25rem;
+            text-align: left;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        th {
+            background: #f8fafc;
+            font-weight: 600;
+            color: #4a5568;
+            font-size: 0.875rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        tr:hover {
+            background: #f8fafc;
+        }
+
+        .status-active {
+            color: #059669;
+            font-weight: 600;
+        }
+
+        .status-inactive {
+            color: #718096;
+            font-weight: 600;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 3rem;
+            color: #718096;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="navbar">
+        <h1>🏥 HealSync Admin</h1>
+        <div class="user-info">
+            <span id="userEmail"></span>
+            <button class="btn-logout" onclick="logout()">Logout</button>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="header-actions">
+            <h2>Tenant Management</h2>
+            <button class="btn btn-primary" onclick="alert('Create Tenant Modal')">
+                <span>➕</span> Add Tenant
+            </button>
+        </div>
+
+        <div class="card">
+            <div id="loadingState" class="loading">Loading tenants...</div>
+            <table id="tenantsTable" style="display: none;">
+                <thead>
+                    <tr>
+                        <th>Organization Name</th>
+                        <th>Domain</th>
+                        <th>Subscription</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="tenantsTableBody">
+                    <!-- Rows will be populated by JS -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        const token = localStorage.getItem('jwtToken');
+        const userEmail = localStorage.getItem('userEmail');
+
+        if (!token) window.location.href = '/login';
+        document.getElementById('userEmail').textContent = userEmail;
+
+        async function loadTenants() {
+            // Simulate API call
+            setTimeout(() => {
+                const tenants = [
+                    { name: 'City Hospital', domain: 'city-hospital', subscription: 'Enterprise', status: 'Active' },
+                    { name: 'Green Valley Clinic', domain: 'green-valley', subscription: 'Standard', status: 'Active' },
+                    { name: 'Dr. Smith Private', domain: 'smith-private', subscription: 'Basic', status: 'Inactive' }
+                ];
+
+                const tbody = document.getElementById('tenantsTableBody');
+                tbody.innerHTML = tenants.map(tenant => `
+                    <tr>
+                        <td style="font-weight: 600;">${tenant.name}</td>
+                        <td>${tenant.domain}.healsync.com</td>
+                        <td>${tenant.subscription}</td>
+                        <td>
+                            <span class="${tenant.status === 'Active' ? 'status-active' : 'status-inactive'}">
+                                ● ${tenant.status}
+                            </span>
+                        </td>
+                        <td>
+                            <button style="border:none; bg:none; cursor:pointer;" onclick="alert('Edit tenant')">⚙️ Manage</button>
+                        </td>
+                    </tr>
+                `).join('');
+
+                document.getElementById('loadingState').style.display = 'none';
+                document.getElementById('tenantsTable').style.display = 'table';
+            }, 600);
+        }
+
+        loadTenants();
+
+        function logout() {
+            localStorage.clear();
+            window.location.href = '/login';
+        }
+    </script>
+</body>
+
+</html>

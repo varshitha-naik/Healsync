@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Profile - HealSync</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, sans-serif;
+            background: #f5f7fa;
+            color: #2d3748;
+        }
+
+        .navbar {
+            background: white;
+            color: #2d3748;
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+
+        .navbar h1 {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: #4F46E5;
+        }
+
+        .btn-back {
+            color: #718096;
+            text-decoration: none;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            transition: color 0.3s;
+        }
+
+        .btn-back:hover {
+            color: #2d3748;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 3rem auto;
+            padding: 0 1.5rem;
+        }
+
+        .profile-card {
+            background: white;
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.05);
+        }
+
+        .profile-header {
+            background: linear-gradient(135deg, #4F46E5 0%, #764ba2 100%);
+            height: 150px;
+            position: relative;
+        }
+
+        .profile-avatar {
+            width: 120px;
+            height: 120px;
+            background: white;
+            border-radius: 50%;
+            border: 4px solid white;
+            position: absolute;
+            bottom: -60px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 3rem;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .profile-body {
+            padding: 80px 40px 40px;
+            text-align: center;
+        }
+
+        .user-name {
+            font-size: 1.75rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            color: #1a202c;
+        }
+
+        .user-role {
+            display: inline-block;
+            padding: 0.25rem 1rem;
+            background: #E0E7FF;
+            color: #4338CA;
+            border-radius: 9999px;
+            font-size: 0.875rem;
+            font-weight: 600;
+            margin-bottom: 2rem;
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+            text-align: left;
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: #718096;
+            margin-bottom: 0.5rem;
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: all 0.3s;
+        }
+
+        .form-control:focus {
+            outline: none;
+            border-color: #4F46E5;
+            box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+        }
+
+        .btn-save {
+            background: #4F46E5;
+            color: white;
+            border: none;
+            padding: 1rem 2rem;
+            border-radius: 10px;
+            font-weight: 600;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-top: 1rem;
+            width: 100%;
+        }
+
+        .btn-save:hover {
+            background: #4338CA;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3);
+        }
+    </style>
+</head>
+
+<body>
+    <div class="navbar">
+        <a href="javascript:history.back()" class="btn-back">← Back</a>
+        <h1>HealSync Profile</h1>
+        <div style="width: 60px;"></div> <!-- Spacer -->
+    </div>
+
+    <div class="container">
+        <div class="profile-card">
+            <div class="profile-header">
+                <div class="profile-avatar">👤</div>
+            </div>
+            <div class="profile-body">
+                <h2 class="user-name" id="displayFullName">Loading...</h2>
+                <span class="user-role" id="displayRole">USER</span>
+
+                <form id="profileForm">
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label>Full Name</label>
+                            <input type="text" class="form-control" id="fullName" value="">
+                        </div>
+                        <div class="form-group">
+                            <label>Email Address</label>
+                            <input type="email" class="form-control" id="email" value="" readonly
+                                style="background: #f7fafc;">
+                        </div>
+                        <div class="form-group">
+                            <label>Phone Number</label>
+                            <input type="tel" class="form-control" id="phone" value="">
+                        </div>
+                        <div class="form-group">
+                            <label>Date of Birth</label>
+                            <input type="date" class="form-control" id="dob" value="">
+                        </div>
+                    </div>
+                    <button type="submit" class="btn-save">Save Changes</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const token = localStorage.getItem('jwtToken');
+        if (!token) window.location.href = '/login';
+
+        // Load user data
+        // In a real app, fetch from /api/me
+        // For now, use localStorage
+        const email = localStorage.getItem('userEmail');
+        const role = localStorage.getItem('userRole');
+
+        document.getElementById('email').value = email || '';
+        document.getElementById('displayRole').textContent = role || 'USER';
+
+        // Fake data population
+        document.getElementById('displayFullName').textContent = 'John Doe';
+        document.getElementById('fullName').value = 'John Doe';
+        document.getElementById('phone').value = '123-456-7890';
+        document.getElementById('dob').value = '1990-01-01';
+
+        document.getElementById('profileForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+            alert('Profile updated successfully!');
+        });
+    </script>
+</body>
+
+</html>
