@@ -8,6 +8,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.Comparator;
 import java.util.List;
 
 @Service
@@ -44,19 +45,27 @@ public class AppointmentService {
     }
 
     public List<Appointment> getAppointmentsByDoctor(Long doctorId) {
-        return appointmentRepository.findByDoctorId(doctorId);
+        List<Appointment> appointments = appointmentRepository.findByDoctorId(doctorId);
+        appointments.sort(Comparator.comparing(Appointment::getStartDateTime));
+        return appointments;
     }
 
     public List<Appointment> getAppointmentsByDoctorAndStatus(Long doctorId, AppointmentStatus status) {
-        return appointmentRepository.findByDoctorIdAndStatus(doctorId, status);
+        List<Appointment> appointments = appointmentRepository.findByDoctorIdAndStatus(doctorId, status);
+        appointments.sort(Comparator.comparing(Appointment::getStartDateTime));
+        return appointments;
     }
 
     public List<Appointment> getAppointmentsByPatient(Long patientId) {
-        return appointmentRepository.findByPatientId(patientId);
+        List<Appointment> appointments = appointmentRepository.findByPatientId(patientId);
+        appointments.sort(Comparator.comparing(Appointment::getStartDateTime));
+        return appointments;
     }
 
     public List<Appointment> getAppointmentsByPatientAndStatus(Long patientId, AppointmentStatus status) {
-        return appointmentRepository.findByPatientIdAndStatus(patientId, status);
+        List<Appointment> appointments = appointmentRepository.findByPatientIdAndStatus(patientId, status);
+        appointments.sort(Comparator.comparing(Appointment::getStartDateTime));
+        return appointments;
     }
 
     @Transactional
@@ -71,6 +80,35 @@ public class AppointmentService {
         }
 
         appointment.setStatus(status);
+        return appointmentRepository.save(appointment);
+    }
+
+    @Transactional
+    public Appointment cancelAppointment(Long appointmentId, String reason) {
+        Appointment appointment = appointmentRepository.findById(appointmentId)
+                .orElseThrow(() -> new RuntimeException("Appointment not found with ID: " + appointmentId));
+
+        if (appointment.getStatus() == AppointmentStatus.CANCELLED ||
+                appointment.getStatus() == AppointmentStatus.COMPLETED) {
+            throw new RuntimeException("Cannot cancel appointment. Current status is: " + appointment.getStatus());
+        }
+
+        appointment.setStatus(AppointmentStatus.CANCELLED);
+        appointment.setCancellationReason(reason);
+        return appointmentRepository.save(appointment);
+    }
+
+    public Appointment getAppointmentById(Long id) {
+        return appointmentRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Appointment not found with ID: " + id));
+    }
+
+    @Transactional
+    public Appointment updateDoctorNotes(Long appointmentId, String notes) {
+        Appointment appointment = appointmentRepository.findById(appointmentId)
+                .orElseThrow(() -> new RuntimeException("Appointment not found with ID: " + appointmentId));
+
+        appointment.setDoctorNotes(notes);
         return appointmentRepository.save(appointment);
     }
 }

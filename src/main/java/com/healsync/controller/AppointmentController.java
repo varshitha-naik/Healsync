@@ -1,5 +1,7 @@
 package com.healsync.controller;
 
+import com.healsync.dto.AppointmentCancelRequest;
+import com.healsync.dto.AppointmentDoctorNotesRequest;
 import com.healsync.dto.AppointmentRequest;
 import com.healsync.dto.AppointmentStatusRequest;
 import com.healsync.entity.Appointment;
@@ -80,5 +82,24 @@ public class AppointmentController {
         } catch (IllegalArgumentException e) {
             throw new RuntimeException("Invalid appointment status: " + request.getStatus());
         }
+    }
+
+    @PutMapping("/{id}/cancel")
+    public ResponseEntity<Appointment> cancelAppointment(
+            @PathVariable Long id,
+            @Valid @RequestBody AppointmentCancelRequest request) {
+        return ResponseEntity.ok(appointmentService.cancelAppointment(id, request.getReason()));
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<Appointment> getAppointmentById(@PathVariable Long id) {
+        return ResponseEntity.ok(appointmentService.getAppointmentById(id));
+    }
+
+    @PutMapping("/{id}/notes")
+    public ResponseEntity<Appointment> updateDoctorNotes(
+            @PathVariable Long id,
+            @Valid @RequestBody AppointmentDoctorNotesRequest request) {
+        return ResponseEntity.ok(appointmentService.updateDoctorNotes(id, request.getDoctorNotes()));
     }
 }
