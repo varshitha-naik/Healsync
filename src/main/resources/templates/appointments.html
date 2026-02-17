@@ -324,7 +324,14 @@
         <!-- List -->
         <div id="loadingIndicator" class="loading">Loading appointments...</div>
         <div id="errorMessage" class="error"></div>
-        <div id="appointmentsList"></div>
+
+        <h3 style="border-bottom: 2px solid #007bff; padding-bottom: 5px; margin-top: 30px; color: #007bff;">Upcoming
+            Appointments</h3>
+        <div id="upcomingList"></div>
+
+        <h3 style="border-bottom: 2px solid #6c757d; padding-bottom: 5px; margin-top: 30px; color: #6c757d;">Past
+            Appointments</h3>
+        <div id="pastList"></div>
     </div>
 
     <script>
@@ -397,12 +404,14 @@
         async function loadAppointments() {
             const loadingIndicator = document.getElementById('loadingIndicator');
             const errorMessage = document.getElementById('errorMessage');
-            const appointmentsList = document.getElementById('appointmentsList');
             const statusFilter = document.getElementById('statusFilter').value;
 
             loadingIndicator.style.display = 'block';
             errorMessage.innerText = '';
-            appointmentsList.innerHTML = '';
+
+            // Clear lists
+            document.getElementById('upcomingList').innerHTML = '';
+            document.getElementById('pastList').innerHTML = '';
 
             try {
                 // First, get current user info
@@ -497,81 +506,104 @@
         }
 
         function renderAppointments(appointments, role) {
-            const container = document.getElementById('appointmentsList');
-            container.innerHTML = '';
+            const upcomingContainer = document.getElementById('upcomingList');
+            const pastContainer = document.getElementById('pastList');
 
-            if (appointments.length === 0) {
-                container.innerHTML = '<p style="text-align:center;">No appointments found.</p>';
-                return;
-            }
+            upcomingContainer.innerHTML = '';
+            pastContainer.innerHTML = '';
+
+            const now = new Date();
+
+            const upcoming = [];
+            const past = [];
 
             appointments.forEach(app => {
-                const card = document.createElement('div');
-                card.className = 'appointment-card';
-
-                const isDoctor = role === 'DOCTOR';
-
-                // Format dates
-                const startStr = app.startDateTime ? new Date(app.startDateTime).toLocaleString() : 'N/A';
-                const endStr = app.endDateTime ? new Date(app.endDateTime).toLocaleString() : 'N/A';
-
-                let actionsHtml = '';
-
-                // Doctor actions
-                if (isDoctor && app.status === 'REQUESTED') {
-                    actionsHtml += `<button class="btn-confirm" onclick="confirmAppointment(${app.id})">Confirm</button>`;
-                }
-
-                // Common actions (only if not cancelled/completed)
-                if (app.status !== 'CANCELLED' && app.status !== 'COMPLETED') {
-                    actionsHtml += `<button class="btn-cancel" onclick="cancelAppointment(${app.id})">Cancel</button>`;
-                }
-
-                // Notes section
-                let notesHtml = '';
-                if (isDoctor) {
-                    notesHtml = `
-                    <div class="notes-section">
-                        <label>Doctor Notes:</label>
-                        <textarea id="notes-${app.id}">${app.doctorNotes || ''}</textarea>
-                        <button class="btn-save" onclick="saveNotes(${app.id})">Save Notes</button>
-                    </div>
-                 `;
+                const start = new Date(app.startDateTime);
+                if (start >= now) {
+                    upcoming.push(app);
                 } else {
-                    notesHtml = `
-                    <div class="notes-section">
-                        <label>Doctor Notes:</label>
-                        <p>${app.doctorNotes || 'No notes available'}</p>
-                    </div>
-                 `;
+                    past.push(app);
+                }
+            });
+
+            // Helper to render a list into a container
+            const renderList = (list, container, emptyMsg) => {
+                if (list.length === 0) {
+                    container.innerHTML = `<p style="text-align:center; color: #777;">${emptyMsg}</p>`;
+                    return;
                 }
 
-                const cancellationReason = app.status === 'CANCELLED' && app.cancellationReason
-                    ? `<p style="color:red"><strong>Cancellation Reason:</strong> ${app.cancellationReason}</p>`
-                    : '';
+                list.forEach(app => {
+                    const card = document.createElement('div');
+                    card.className = 'appointment-card';
 
-                card.innerHTML = `
-                <div class="appointment-header">
-                    <strong>ID: ${app.id}</strong>
-                    <span class="status-badge status-${app.status}">${app.status}</span>
-                </div>
-                <div class="details">
-                    <p><strong>Clinic ID:</strong> ${app.clinicId}</p>
-                    <p><strong>Doctor ID:</strong> ${app.doctorId}</p>
-                    <p><strong>Patient ID:</strong> ${app.patientId}</p>
-                    <hr style="border:0; border-top:1px solid #eee; margin:10px 0;">
-                    <p><strong>Start:</strong> ${startStr}</p>
-                    <p><strong>End:</strong> ${endStr}</p>
-                    <p><strong>Reason:</strong> ${app.reason || 'N/A'}</p>
-                    ${cancellationReason}
-                </div>
-                ${notesHtml}
-                <div class="actions">
-                    ${actionsHtml}
-                </div>
-            `;
-                container.appendChild(card);
-            });
+                    const isDoctor = role === 'DOCTOR';
+
+                    // Format dates
+                    const startStr = app.startDateTime ? new Date(app.startDateTime).toLocaleString() : 'N/A';
+                    const endStr = app.endDateTime ? new Date(app.endDateTime).toLocaleString() : 'N/A';
+
+                    let actionsHtml = '';
+
+                    // Doctor actions
+                    if (isDoctor && app.status === 'REQUESTED') {
+                        actionsHtml += `<button class="btn-confirm" onclick="confirmAppointment(${app.id})">Confirm</button>`;
+                    }
+
+                    // Common actions (only if not cancelled/completed)
+                    if (app.status !== 'CANCELLED' && app.status !== 'COMPLETED') {
+                        actionsHtml += `<button class="btn-cancel" onclick="cancelAppointment(${app.id})">Cancel</button>`;
+                    }
+
+                    // Notes section
+                    let notesHtml = '';
+                    if (isDoctor) {
+                        notesHtml = `
+                        <div class="notes-section">
+                            <label>Doctor Notes:</label>
+                            <textarea id="notes-${app.id}">${app.doctorNotes || ''}</textarea>
+                            <button class="btn-save" onclick="saveNotes(${app.id})">Save Notes</button>
+                        </div>
+                     `;
+                    } else {
+                        notesHtml = `
+                        <div class="notes-section">
+                            <label>Doctor Notes:</label>
+                            <div style="padding: 10px; background: #f1f1f1; border-radius: 4px; min-height: 40px; white-space: pre-wrap;">${app.doctorNotes || 'No notes available'}</div>
+                        </div>
+                     `;
+                    }
+
+                    const cancellationReason = app.status === 'CANCELLED' && app.cancellationReason
+                        ? `<p style="color:red"><strong>Cancellation Reason:</strong> ${app.cancellationReason}</p>`
+                        : '';
+
+                    card.innerHTML = `
+                    <div class="appointment-header">
+                        <strong>ID: ${app.id}</strong>
+                        <span class="status-badge status-${app.status}">${app.status}</span>
+                    </div>
+                    <div class="details">
+                        <p><strong>Clinic ID:</strong> ${app.clinicId}</p>
+                        <p><strong>Doctor ID:</strong> ${app.doctorId}</p>
+                        <p><strong>Patient ID:</strong> ${app.patientId}</p>
+                        <hr style="border:0; border-top:1px solid #eee; margin:10px 0;">
+                        <p><strong>Start:</strong> ${startStr}</p>
+                        <p><strong>End:</strong> ${endStr}</p>
+                        <p><strong>Reason:</strong> ${app.reason || 'N/A'}</p>
+                        ${cancellationReason}
+                    </div>
+                    ${notesHtml}
+                    <div class="actions">
+                        ${actionsHtml}
+                    </div>
+                `;
+                    container.appendChild(card);
+                });
+            };
+
+            renderList(upcoming, upcomingContainer, "No upcoming appointments");
+            renderList(past, pastContainer, "No past appointments");
         }
 
         async function confirmAppointment(id) {
