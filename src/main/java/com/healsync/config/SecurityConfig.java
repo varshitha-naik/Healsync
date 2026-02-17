@@ -39,7 +39,7 @@ public class SecurityConfig {
                         // Dashboard HTML pages (allowed - JS will check JWT)
                         .requestMatchers("/admin/dashboard", "/admin/create-doctor", "/admin/appointments",
                                 "/admin/audit-logs",
-                                "/doctor/dashboard", "/patient/dashboard")
+                                "/doctor/dashboard", "/patient/dashboard", "/appointments")
                         .permitAll()
                         // API endpoints (secured by role)
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")

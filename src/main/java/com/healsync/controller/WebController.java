@@ -70,4 +70,9 @@ public class WebController {
     public String patientDashboard() {
         return "patient/dashboard";
     }
+
+    @GetMapping("/appointments")
+    public String appointments() {
+        return "appointments";
+    }
 }
