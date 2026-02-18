@@ -72,6 +72,16 @@ public class WebController {
         return "patient/dashboard";
     }
 
+    @GetMapping("/patient/find-doctor")
+    public String findDoctor() {
+        return "patient/find-doctor";
+    }
+
+    @GetMapping("/patient/medical-history")
+    public String medicalHistory() {
+        return "patient/medical-history";
+    }
+
     @GetMapping("/appointments")
     public String appointments(Authentication authentication) {
         if (authentication != null) {

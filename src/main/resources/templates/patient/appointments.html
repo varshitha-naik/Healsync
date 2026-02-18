@@ -521,6 +521,14 @@
                         pInput.value = user.userId;
                         pInput.disabled = true;
                     }
+
+                    // NEW: Check for doctorId in URL query params
+                    const urlParams = new URLSearchParams(window.location.search);
+                    const doctorIdParam = urlParams.get('doctorId');
+                    if (doctorIdParam) {
+                        const dInput = document.getElementById('doctorId');
+                        if (dInput) dInput.value = doctorIdParam;
+                    }
                 } else if (user.role === 'DOCTOR') {
                     const dInput = document.getElementById('doctorId');
                     if (dInput) {

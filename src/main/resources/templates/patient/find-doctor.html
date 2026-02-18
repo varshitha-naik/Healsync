@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Find a Doctor - HealSync</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, sans-serif;
+            background: #f5f7fa;
+            color: #2d3748;
+        }
+
+        /* Navbar handled by fragment */
+        .container {
+            max-width: 1200px;
+            margin: 2rem auto;
+            padding: 0 2rem;
+        }
+
+        .card {
+            background: white;
+            border-radius: 16px;
+            padding: 1.5rem;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+            margin-bottom: 2rem;
+        }
+
+        h2 {
+            margin-bottom: 1.5rem;
+            color: #2d3748;
+        }
+
+        .search-box {
+            margin-bottom: 1.5rem;
+        }
+
+        .search-box input {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 1rem;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th,
+        td {
+            padding: 1rem;
+            text-align: left;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        th {
+            background: #f7fafc;
+            font-weight: 600;
+            color: #718096;
+        }
+
+        tr:hover {
+            background: #f8fafc;
+            transition: background 0.2s;
+        }
+
+        .btn-book {
+            background: #3B82F6;
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            text-decoration: none;
+            font-weight: 500;
+            display: inline-block;
+            transition: background 0.2s;
+        }
+
+        .btn-book:hover {
+            background: #2563EB;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 2rem;
+            color: #718096;
+        }
+    </style>
+</head>
+
+<body>
+    <div th:replace="fragments/patient-navbar :: navbar"></div>
+
+    <div class="container">
+        <div class="card">
+            <h2>Find a Doctor</h2>
+            <div class="search-box">
+                <input type="text" id="searchInput" placeholder="Search by name or specialization..."
+                    onkeyup="filterDoctors()">
+            </div>
+
+            <div id="loading" class="loading">Loading doctors...</div>
+
+            <table id="doctorsTable" style="display: none;">
+                <thead>
+                    <tr>
+                        <th>Doctor Name</th>
+                        <th>Specialization</th>
+                        <th>Email</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody id="doctorsBody"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        let allDoctors = [];
+
+        async function loadDoctors() {
+            const token = localStorage.getItem('jwtToken');
+            if (!token) window.location.href = '/login';
+
+            try {
+                const res = await fetch('/api/patient/doctors', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+
+                if (!res.ok) throw new Error("Failed to load doctors");
+
+                allDoctors = await res.json();
+                renderDoctors(allDoctors);
+
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('doctorsTable').style.display = 'table';
+            } catch (e) {
+                console.error(e);
+                document.getElementById('loading').innerText = "Error loading doctors.";
+            }
+        }
+
+        function renderDoctors(doctors) {
+            const tbody = document.getElementById('doctorsBody');
+            tbody.innerHTML = '';
+
+            if (doctors.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;">No doctors found.</td></tr>';
+                return;
+            }
+
+            doctors.forEach(d => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${d.name || 'Unknown'}</td>
+                    <td>${d.specialization || 'General'}</td>
+                    <td>${d.email}</td>
+                    <td><a href="/appointments?doctorId=${d.doctorId}" class="btn-book">Book Appointment</a></td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function filterDoctors() {
+            const query = document.getElementById('searchInput').value.toLowerCase();
+            const filtered = allDoctors.filter(d =>
+                (d.name && d.name.toLowerCase().includes(query)) ||
+                (d.specialization && d.specialization.toLowerCase().includes(query))
+            );
+            renderDoctors(filtered);
+        }
+
+        window.onload = loadDoctors;
+    </script>
+</body>
+
+</html>

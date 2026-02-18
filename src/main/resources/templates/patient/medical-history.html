@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Medical History - HealSync</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, sans-serif;
+            background: #f5f7fa;
+            color: #2d3748;
+        }
+
+        /* Navbar handled by fragment */
+        .container {
+            max-width: 1200px;
+            margin: 2rem auto;
+            padding: 0 2rem;
+        }
+
+        .card {
+            background: white;
+            border-radius: 16px;
+            padding: 1.5rem;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+            margin-bottom: 2rem;
+        }
+
+        h2 {
+            margin-bottom: 1.5rem;
+            color: #2d3748;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th,
+        td {
+            padding: 1rem;
+            text-align: left;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        th {
+            background: #f7fafc;
+            font-weight: 600;
+            color: #718096;
+        }
+
+        tr:hover {
+            background: #f8fafc;
+            transition: background 0.2s;
+        }
+
+        .status-badge {
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+
+        .status-CONFIRMED {
+            background-color: #28a745;
+            color: white;
+        }
+
+        .status-COMPLETED {
+            background-color: #007bff;
+            color: white;
+        }
+
+        .status-CANCELLED {
+            background-color: #dc3545;
+            color: white;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 2rem;
+            color: #718096;
+        }
+    </style>
+</head>
+
+<body>
+    <div th:replace="fragments/patient-navbar :: navbar"></div>
+
+    <div class="container">
+        <div class="card">
+            <h2>Medical History</h2>
+            <div id="loading" class="loading">Loading history...</div>
+            <table id="historyTable" style="display: none;">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Doctor</th>
+                        <th>Visit Reason</th>
+                        <th>Status</th>
+                        <th>Notes</th>
+                    </tr>
+                </thead>
+                <tbody id="historyBody"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        async function loadHistory() {
+            const token = localStorage.getItem('jwtToken');
+            if (!token) window.location.href = '/login';
+
+            try {
+                // Get user ID
+                const meRes = await fetch('/api/auth/me', { headers: { 'Authorization': `Bearer ${token}` } });
+                const user = await meRes.json();
+
+                const res = await fetch(`/api/patient/history/${user.userId}`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+
+                if (!res.ok) throw new Error("Failed to load history");
+
+                let history = await res.json();
+
+                // Sort by date desc
+                history.sort((a, b) => new Date(b.startDateTime) - new Date(a.startDateTime));
+
+                renderHistory(history);
+
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('historyTable').style.display = 'table';
+            } catch (e) {
+                console.error(e);
+                document.getElementById('loading').innerText = "Error loading medical history.";
+            }
+        }
+
+        function renderHistory(history) {
+            const tbody = document.getElementById('historyBody');
+            tbody.innerHTML = '';
+
+            if (history.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">No history found.</td></tr>';
+                return;
+            }
+
+            history.forEach(h => {
+                const tr = document.createElement('tr');
+                const date = new Date(h.startDateTime).toLocaleDateString() + ' ' + new Date(h.startDateTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                tr.innerHTML = `
+                    <td>${date}</td>
+                    <td>${h.doctorName || 'Dr. ' + h.doctorId}</td>
+                    <td>${h.reason || '-'}</td>
+                    <td><span class="status-badge status-${h.status}">${h.status}</span></td>
+                    <td>${h.doctorNotes || '-'}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        window.onload = loadHistory;
+    </script>
+</body>
+
+</html>

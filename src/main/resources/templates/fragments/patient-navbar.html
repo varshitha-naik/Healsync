@@ -61,27 +61,28 @@
         </style>
         <div class="navbar">
             <h1 onclick="window.location.href='/patient/dashboard'">👤 HealSync Patient</h1>
-            <div class="nav-links">
-                <a href="/patient/dashboard" class="nav-link">Dashboard</a>
-                <a href="/appointments" class="nav-link">My Appointments</a>
-            </div>
-            <div class="user-info">
-                <span id="navUserEmail"></span>
-                <button class="btn-logout" onclick="logout()">Logout</button>
-            </div>
+            <a href="/patient/dashboard" class="nav-link">Dashboard</a>
+            <a href="/appointments" class="nav-link">My Appointments</a>
+            <a href="/patient/find-doctor" class="nav-link">Find Doctor</a>
+            <a href="/patient/medical-history" class="nav-link">Medical History</a>
         </div>
-        <script>
-            document.addEventListener("DOMContentLoaded", () => {
-                const email = localStorage.getItem('userEmail');
-                const doc = document.getElementById('navUserEmail');
-                if (doc && email) doc.innerText = email;
-            });
+        <div class="user-info">
+            <span id="navUserEmail"></span>
+            <button class="btn-logout" onclick="logout()">Logout</button>
+        </div>
+    </div>
+    <script>
+        document.addEventListener("DOMContentLoaded", () => {
+            const email = localStorage.getItem('userEmail');
+            const doc = document.getElementById('navUserEmail');
+            if (doc && email) doc.innerText = email;
+        });
 
-            function logout() {
-                localStorage.clear();
-                window.location.href = '/login';
-            }
-        </script>
+        function logout() {
+            localStorage.clear();
+            window.location.href = '/login';
+        }
+    </script>
     </div>
 </body>
 
