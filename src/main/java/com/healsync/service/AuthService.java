@@ -22,6 +22,7 @@ public class AuthService {
 
     private final UserRepository userRepository;
     private final PatientProfileRepository patientProfileRepository;
+    private final com.healsync.repository.DoctorProfileRepository doctorProfileRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
     private final AuthenticationManager authenticationManager;
@@ -54,6 +55,30 @@ public class AuthService {
         String token = jwtUtil.generateToken(user.getEmail(), user.getId(), user.getRole().name());
 
         return new AuthResponse(token, user.getEmail(), user.getRole().name(), user.getId());
+    }
+
+    @Transactional
+    public void createDoctor(com.healsync.dto.CreateDoctorRequest request) {
+        if (userRepository.existsByEmail(request.getEmail())) {
+            throw new RuntimeException("Email already exists");
+        }
+
+        User user = new User();
+        user.setEmail(request.getEmail());
+        user.setPasswordHash(passwordEncoder.encode(request.getPassword()));
+        user.setRole(UserRole.DOCTOR);
+        user.setStatus(UserStatus.ACTIVE);
+        user = userRepository.save(user);
+
+        com.healsync.entity.DoctorProfile profile = new com.healsync.entity.DoctorProfile();
+        profile.setUserId(user.getId());
+        profile.setFullName(request.getFullName());
+        profile.setSpecialization(request.getSpecialization());
+        profile.setLicenseNumber(request.getLicenseNumber());
+        profile.setExperienceYears(request.getExperienceYears());
+        profile.setClinicId(request.getClinicId());
+        profile.setBio(request.getBio());
+        doctorProfileRepository.save(profile);
     }
 
     public AuthResponse login(LoginRequest request) {

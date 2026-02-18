@@ -75,7 +75,7 @@
         }
 
         select,
-        input {
+        input[type=time] {
             width: 100%;
             padding: 0.75rem;
             border: 1px solid #e2e8f0;
@@ -117,6 +117,73 @@
             font-weight: 600;
             color: #718096;
         }
+
+        .checkbox-group label {
+            display: inline-flex;
+            align-items: center;
+            margin-right: 1rem;
+            margin-bottom: 0.5rem;
+            cursor: pointer;
+        }
+
+        .checkbox-group input {
+            margin-right: 0.5rem;
+        }
+
+        /* Modal Styles */
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .modal-content {
+            background: white;
+            padding: 2rem;
+            border-radius: 12px;
+            width: 90%;
+            max-width: 400px;
+            text-align: center;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+        }
+
+        .modal-btn-group {
+            margin-top: 1.5rem;
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+        }
+
+        .btn-confirm {
+            background: #ef4444;
+            color: white;
+            padding: 0.5rem 1.5rem;
+            border-radius: 6px;
+            border: none;
+            cursor: pointer;
+            font-weight: 600;
+        }
+
+        .refresh-btn {
+            background: #e2e8f0;
+            color: #4a5568;
+            padding: 0.5rem 1.5rem;
+            border-radius: 6px;
+            border: none;
+            cursor: pointer;
+            font-weight: 600;
+        }
     </style>
 </head>
 
@@ -131,17 +198,17 @@
         <div class="card">
             <h2>Add Availability</h2>
             <form id="addForm" onsubmit="addAvailability(event)">
-                <div class="form-group">
-                    <label>Day of Week</label>
-                    <select id="dayOfWeek" required>
-                        <option value="MONDAY">Monday</option>
-                        <option value="TUESDAY">Tuesday</option>
-                        <option value="WEDNESDAY">Wednesday</option>
-                        <option value="THURSDAY">Thursday</option>
-                        <option value="FRIDAY">Friday</option>
-                        <option value="SATURDAY">Saturday</option>
-                        <option value="SUNDAY">Sunday</option>
-                    </select>
+                <div class="form-group checkbox-group">
+                    <label>Select Days:</label>
+                    <div style="display: flex; flex-wrap: wrap;">
+                        <label><input type="checkbox" name="day" value="MONDAY"> Mon</label>
+                        <label><input type="checkbox" name="day" value="TUESDAY"> Tue</label>
+                        <label><input type="checkbox" name="day" value="WEDNESDAY"> Wed</label>
+                        <label><input type="checkbox" name="day" value="THURSDAY"> Thu</label>
+                        <label><input type="checkbox" name="day" value="FRIDAY"> Fri</label>
+                        <label><input type="checkbox" name="day" value="SATURDAY"> Sat</label>
+                        <label><input type="checkbox" name="day" value="SUNDAY"> Sun</label>
+                    </div>
                 </div>
                 <div class="form-group">
                     <label>Start Time</label>
@@ -173,6 +240,18 @@
                     </tr>
                 </tbody>
             </table>
+        </div>
+    </div>
+
+    <!-- Confirm Modal -->
+    <div id="confirmModal" class="modal hidden">
+        <div class="modal-content">
+            <h3 style="margin-bottom: 0.5rem; color: #2d3748;">Confirm Action</h3>
+            <p id="confirmText" style="color: #4a5568;">Are you sure?</p>
+            <div class="modal-btn-group">
+                <button id="confirmYes" class="btn-confirm">Yes</button>
+                <button id="confirmNo" class="refresh-btn">Cancel</button>
+            </div>
         </div>
     </div>
 
@@ -233,16 +312,23 @@
             const sTime = document.getElementById('startTime').value;
             const eTime = document.getElementById('endTime').value;
 
-            // Basic validation
             if (sTime >= eTime) {
                 alert("Start time must be before End time");
                 return;
             }
 
+            const selectedDays = [...document.querySelectorAll('input[name=day]:checked')]
+                .map(c => c.value);
+
+            if (selectedDays.length === 0) {
+                alert("Please select at least one day");
+                return;
+            }
+
             const payload = {
                 doctorId: currentUserId,
-                dayOfWeek: document.getElementById('dayOfWeek').value,
-                startTime: sTime + ":00", // Ensure HH:mm:ss format
+                days: selectedDays,
+                startTime: sTime + ":00",
                 endTime: eTime + ":00"
             };
 
@@ -255,7 +341,8 @@
 
                 if (res.ok) {
                     loadSlots();
-                    // document.getElementById('addForm').reset(); // Optional
+                    // Optional: reset form
+                    document.querySelectorAll('input[type=checkbox]').forEach(c => c.checked = false);
                 } else {
                     const txt = await res.text();
                     alert("Failed to add slot: " + txt);
@@ -266,8 +353,33 @@
             }
         }
 
+        function showConfirm(message) {
+            return new Promise(resolve => {
+                const modal = document.getElementById('confirmModal');
+                const text = document.getElementById('confirmText');
+                const yes = document.getElementById('confirmYes');
+                const no = document.getElementById('confirmNo');
+
+                text.innerText = message;
+                modal.classList.remove('hidden');
+
+                // Remove previous listeners to avoid stacking if any (recreating or simpler logic preferred but this works for simple usage)
+                // Better to just set onclick
+                yes.onclick = () => {
+                    modal.classList.add('hidden');
+                    resolve(true);
+                };
+
+                no.onclick = () => {
+                    modal.classList.add('hidden');
+                    resolve(false);
+                };
+            });
+        }
+
         async function deleteSlot(id) {
-            if (!confirm("Remove this slot?")) return; // Using native for simplicity on new page unless asked otherwise
+            if (!(await showConfirm("Remove this availability slot?"))) return;
+
             const token = localStorage.getItem('jwtToken');
             await fetch(`${API_BASE}/availability/${id}`, {
                 method: 'DELETE',

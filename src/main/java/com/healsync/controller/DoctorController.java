@@ -1,5 +1,6 @@
 package com.healsync.controller;
 
+import com.healsync.dto.AvailabilityRequest;
 import com.healsync.dto.DoctorPatientDTO;
 import com.healsync.entity.DoctorAvailability;
 import com.healsync.service.DoctorService;
@@ -27,8 +28,16 @@ public class DoctorController {
     }
 
     @PostMapping("/availability")
-    public ResponseEntity<?> addAvailability(@RequestBody DoctorAvailability availability) {
-        return ResponseEntity.ok(doctorService.addAvailability(availability));
+    public ResponseEntity<?> addAvailability(@RequestBody AvailabilityRequest req) {
+        for (String day : req.getDays()) {
+            DoctorAvailability slot = new DoctorAvailability();
+            slot.setDoctorId(req.getDoctorId());
+            slot.setDayOfWeek(day);
+            slot.setStartTime(req.getStartTime());
+            slot.setEndTime(req.getEndTime());
+            doctorService.addAvailability(slot);
+        }
+        return ResponseEntity.ok().build();
     }
 
     @DeleteMapping("/availability/{id}")

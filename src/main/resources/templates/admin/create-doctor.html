@@ -308,22 +308,6 @@
                 bio: formData.get('bio')
             };
 
-            // TODO: Replace with actual API call
-            // For now, simulate success
-            document.getElementById('message').innerHTML = `
-                <div class="alert alert-success">
-                    ✅ Doctor created successfully!<br>
-                    <strong>Email:</strong> ${data.email}<br>
-                    <strong>Name:</strong> ${data.fullName}<br>
-                    Redirecting to dashboard...
-                </div>
-            `;
-
-            setTimeout(() => {
-                window.location.href = '/admin/dashboard';
-            }, 2000);
-
-            /* Actual API call would be:
             try {
                 const response = await fetch('/api/admin/doctors', {
                     method: 'POST',
@@ -333,16 +317,28 @@
                     },
                     body: JSON.stringify(data)
                 });
-                
+
                 if (response.ok) {
-                    // Success handling
+                    document.getElementById('message').innerHTML = `
+                        <div class="alert alert-success">
+                            ✅ Doctor created successfully!<br>
+                            <strong>Email:</strong> ${data.email}<br>
+                            <strong>Name:</strong> ${data.fullName}<br>
+                            Redirecting to dashboard...
+                        </div>
+                    `;
+
+                    setTimeout(() => {
+                        window.location.href = '/admin/dashboard';
+                    }, 2000);
                 } else {
-                    // Error handling
+                    const errText = await response.text();
+                    document.getElementById('message').innerHTML = `<div class="alert alert-error">Failed: ${errText}</div>`;
                 }
             } catch (error) {
                 console.error('Error:', error);
+                document.getElementById('message').innerHTML = `<div class="alert alert-error">Check console for error</div>`;
             }
-            */
         });
     </script>
 </body>
