@@ -1,8 +1,10 @@
 package com.healsync.service;
 
 import com.healsync.entity.Appointment;
+import com.healsync.entity.PatientProfile;
 import com.healsync.enums.AppointmentStatus;
 import com.healsync.repository.AppointmentRepository;
+import com.healsync.repository.PatientProfileRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -16,6 +18,7 @@ import java.util.List;
 public class AppointmentService {
 
     private final AppointmentRepository appointmentRepository;
+    private final PatientProfileRepository patientProfileRepository;
 
     @Transactional
     public Appointment bookAppointment(
@@ -31,11 +34,15 @@ public class AppointmentService {
             throw new RuntimeException("Doctor has an overlapping appointment at this time");
         }
 
+        // Fetch patient profile using userId (passed as patientId)
+        PatientProfile profile = patientProfileRepository.findByUserId(patientId)
+                .orElseThrow(() -> new RuntimeException("Patient profile not found for user ID: " + patientId));
+
         // Create new appointment
         Appointment appointment = new Appointment();
         appointment.setClinicId(clinicId);
         appointment.setDoctorId(doctorId);
-        appointment.setPatientId(patientId);
+        appointment.setPatientId(profile.getId());
         appointment.setStartDateTime(start);
         appointment.setEndDateTime(end);
         appointment.setReason(reason);

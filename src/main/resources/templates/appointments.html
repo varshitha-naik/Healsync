@@ -160,6 +160,12 @@
             margin-bottom: 15px;
             border-radius: 4px;
             background: #fff;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .appointment-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
         }
 
         .appointment-header {
@@ -233,11 +239,28 @@
             background-color: #17a2b8;
         }
 
+        .btn-complete {
+            background-color: #007bff;
+        }
+
         .error {
             color: red;
             text-align: center;
             margin-top: 10px;
             font-weight: bold;
+            padding: 10px;
+            border-radius: 4px;
+        }
+
+        .success {
+            color: green;
+            background-color: #d4edda;
+            border: 1px solid #c3e6cb;
+            text-align: center;
+            margin-top: 10px;
+            font-weight: bold;
+            padding: 10px;
+            border-radius: 4px;
         }
 
         .loading {
@@ -287,10 +310,7 @@
                 <input type="hidden" id="patientId">
 
                 <div class="form-grid">
-                    <div class="form-group">
-                        <label>Clinic ID:</label>
-                        <input type="number" id="clinicId" required>
-                    </div>
+
                     <div class="form-group">
                         <label>Reason:</label>
                         <input type="text" id="reason">
@@ -318,6 +338,7 @@
                 <option value="COMPLETED">Completed</option>
             </select>
             <button onclick="loadAppointments()">Load Appointments</button>
+            <button onclick="loadConfirmedOnly()" style="background-color: #fd7e14;">Show Confirmed Only</button>
             <button class="refresh-btn" onclick="loadAppointments()">Refresh</button>
         </div>
 
@@ -338,9 +359,11 @@
         const API_BASE = '/api/appointments';
 
         function getAuthHeaders() {
-            const token = localStorage.getItem('token');
+            const token = localStorage.getItem('jwtToken');
+            console.log('token:', token);
+
             if (!token) {
-                window.location.href = '/login';
+                console.log('No token');
                 return {};
             }
             return {
@@ -349,65 +372,97 @@
             };
         }
 
+        function showSuccess(msg) {
+            const el = document.getElementById('errorMessage');
+            el.className = 'success';
+            el.innerText = msg;
+            el.style.display = 'block';
+            setTimeout(() => { el.style.display = 'none'; }, 5000);
+        }
+
+        function showError(msg) {
+            const el = document.getElementById('errorMessage');
+            el.className = 'error';
+            el.innerText = msg;
+            el.style.display = 'block';
+        }
+
         async function bookAppointment(event) {
             event.preventDefault();
 
             const btn = document.getElementById('bookBtn');
+
             const startVal = document.getElementById('start').value;
             const endVal = document.getElementById('end').value;
 
-            // Validation: Start before End
             if (new Date(startVal) >= new Date(endVal)) {
-                alert('Start time must be before End time');
+                showError("Start time must be before end time");
                 return;
             }
 
+            const doctorIdInput = document.getElementById('doctorId').value;
+            const doctorId = doctorIdInput ? Number(doctorIdInput) : 1;
+
+            const patientId = document.getElementById('patientId').value;
+
             const payload = {
-                clinicId: document.getElementById('clinicId').value,
-                doctorId: document.getElementById('doctorId').value,
-                patientId: document.getElementById('patientId').value,
-                start: startVal,
-                end: endVal,
+                clinicId: 1,
+                doctorId: doctorId,
+                patientId: Number(patientId),
+                start: startVal + ":00",
+                end: endVal + ":00",
                 reason: document.getElementById('reason').value
             };
 
+            console.log("Booking payload:", payload);
+
             try {
+
                 btn.disabled = true;
-                btn.textContent = 'Booking...';
+                btn.textContent = "Creating appointment...";
 
                 const response = await fetch(`${API_BASE}/book`, {
-                    method: 'POST',
+                    method: "POST",
                     headers: getAuthHeaders(),
                     body: JSON.stringify(payload)
                 });
 
                 if (!response.ok) {
                     const err = await response.json().catch(() => ({}));
-                    throw new Error(err.message || 'Failed to book appointment');
+                    throw new Error(err.message || "Booking failed");
                 }
 
-                alert('Appointment booked successfully!');
-                document.getElementById('bookingForm').reset();
+                console.log("BOOK SUCCESS");
 
-                // Re-fetch user info to re-populate restricted fields correctly if needed
-                // But since we are reloading appointments, the loadAppointments fn handles filling input fields too.
-                loadAppointments();
+                showSuccess("Appointment booked successfully");
+
+                document.getElementById("bookingForm").reset();
+
+                await loadAppointments();
+
+                document.getElementById("upcomingList")
+                    .scrollIntoView({ behavior: "smooth" });
 
             } catch (error) {
-                alert('Error: ' + error.message);
+
+                console.error(error);
+                showError(error.message);
+
             } finally {
+
                 btn.disabled = false;
-                btn.textContent = 'Book Appointment';
+                btn.textContent = "Book Appointment";
             }
         }
 
         async function loadAppointments() {
+            console.log('appointments page loaded');
             const loadingIndicator = document.getElementById('loadingIndicator');
             const errorMessage = document.getElementById('errorMessage');
             const statusFilter = document.getElementById('statusFilter').value;
 
             loadingIndicator.style.display = 'block';
-            errorMessage.innerText = '';
+            // errorMessage.innerText = ''; // Removed to persist success messages
 
             // Clear lists
             document.getElementById('upcomingList').innerHTML = '';
@@ -422,6 +477,7 @@
 
                 if (!meResponse.ok) throw new Error('Failed to fetch user info. Please login again.');
                 const user = await meResponse.json();
+                console.log('current user:', user);
 
                 // Auto-fill form fields based on role
                 if (user.role === 'PATIENT') {
@@ -529,7 +585,10 @@
             // Helper to render a list into a container
             const renderList = (list, container, emptyMsg) => {
                 if (list.length === 0) {
-                    container.innerHTML = `<p style="text-align:center; color: #777;">${emptyMsg}</p>`;
+                    container.innerHTML = `
+                        <div style="text-align:center;color:#777;padding:20px;background:#fff;border-radius:4px;border:1px dashed #ddd;">
+                           ${emptyMsg}
+                        </div>`;
                     return;
                 }
 
@@ -546,8 +605,12 @@
                     let actionsHtml = '';
 
                     // Doctor actions
-                    if (isDoctor && app.status === 'REQUESTED') {
-                        actionsHtml += `<button class="btn-confirm" onclick="confirmAppointment(${app.id})">Confirm</button>`;
+                    if (isDoctor) {
+                        if (app.status === 'REQUESTED') {
+                            actionsHtml += `<button class="btn-confirm" onclick="confirmAppointment(${app.id})">Confirm</button>`;
+                        } else if (app.status === 'CONFIRMED') {
+                            actionsHtml += `<button class="btn-complete" onclick="completeAppointment(${app.id})">Complete</button>`;
+                        }
                     }
 
                     // Common actions (only if not cancelled/completed)
@@ -602,8 +665,8 @@
                 });
             };
 
-            renderList(upcoming, upcomingContainer, "No upcoming appointments");
-            renderList(past, pastContainer, "No past appointments");
+            renderList(upcoming, upcomingContainer, "No upcoming appointments yet. Create one above 👆");
+            renderList(past, pastContainer, "No past appointments found.");
         }
 
         async function confirmAppointment(id) {
@@ -654,7 +717,7 @@
         async function saveNotes(id) {
             const notes = document.getElementById(`notes-${id}`).value;
             if (!notes) {
-                alert("Notes cannot be empty");
+                showError("Notes cannot be empty");
                 return;
             }
 
@@ -670,10 +733,67 @@
                     throw new Error(err.message || 'Failed to save notes');
                 }
 
-                alert('Notes updated!');
+                showSuccess('Notes updated!');
                 loadAppointments();
             } catch (error) {
-                alert(error.message);
+                showError(error.message);
+            }
+        }
+
+        async function completeAppointment(id) {
+            if (!confirm("Mark appointment as completed?")) return;
+
+            try {
+                const response = await fetch(`${API_BASE}/${id}/status`, {
+                    method: 'PUT',
+                    headers: getAuthHeaders(),
+                    body: JSON.stringify({ status: 'COMPLETED' })
+                });
+
+                if (!response.ok) {
+                    const err = await response.json();
+                    throw new Error(err.message || 'Failed to complete appointment');
+                }
+
+                showSuccess("Appointment completed");
+                loadAppointments();
+            } catch (error) {
+                showError(error.message);
+            }
+        }
+
+        async function loadConfirmedOnly() {
+            try {
+                const meResponse = await fetch('/api/auth/me', {
+                    method: 'GET',
+                    headers: getAuthHeaders()
+                });
+
+                if (!meResponse.ok) throw new Error("Failed to check user role");
+                const user = await meResponse.json();
+
+                if (user.role !== 'DOCTOR') {
+                    showError("Only doctors can use this view");
+                    return;
+                }
+
+                const response = await fetch(
+                    `${API_BASE}/doctor/${user.userId}?status=CONFIRMED`,
+                    {
+                        method: 'GET',
+                        headers: getAuthHeaders()
+                    }
+                );
+
+                if (!response.ok) throw new Error("Failed to load confirmed appointments");
+                const appointments = await response.json();
+
+                updateSummary(appointments);
+                renderAppointments(appointments, user.role);
+                showSuccess(`Showing ${appointments.length} CONFIRMED appointments`);
+
+            } catch (error) {
+                showError(error.message);
             }
         }
 

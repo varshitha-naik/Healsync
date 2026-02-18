@@ -10,6 +10,7 @@ import com.healsync.service.AppointmentService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
@@ -23,7 +24,11 @@ public class AppointmentController {
     private final AppointmentService appointmentService;
 
     @PostMapping("/book")
-    public ResponseEntity<Appointment> bookAppointment(@Valid @RequestBody AppointmentRequest request) {
+    public ResponseEntity<?> bookAppointment(@Valid @RequestBody AppointmentRequest request, BindingResult result) {
+
+        if (result.hasErrors()) {
+            return ResponseEntity.badRequest().body(result.getAllErrors());
+        }
 
         LocalDateTime startDateTime = LocalDateTime.parse(request.getStart());
         LocalDateTime endDateTime = LocalDateTime.parse(request.getEnd());

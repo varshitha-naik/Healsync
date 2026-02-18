@@ -267,8 +267,9 @@
         // Check if already logged in
         const existingToken = localStorage.getItem('jwtToken');
         const existingRole = localStorage.getItem('userRole');
+        const currentPath = window.location.pathname;
 
-        if (existingToken && existingRole) {
+        if (existingToken && existingRole && (currentPath === '/login' || currentPath === '/') && currentPath !== '/appointments') {
             switch (existingRole) {
                 case 'ADMIN':
                     window.location.href = '/admin/dashboard';
