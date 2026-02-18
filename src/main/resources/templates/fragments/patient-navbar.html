@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+
+<body>
+    <div th:fragment="navbar">
+        <style>
+            .navbar {
+                background: linear-gradient(135deg, #3B82F6 0%, #2563EB 100%);
+                color: white;
+                padding: 1rem 2rem;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            }
+
+            .navbar h1 {
+                font-size: 1.5rem;
+                font-weight: 700;
+                cursor: pointer;
+            }
+
+            .nav-links {
+                display: flex;
+                gap: 1rem;
+                align-items: center;
+            }
+
+            .nav-link {
+                color: white;
+                text-decoration: none;
+                padding: 0.5rem 1rem;
+                border-radius: 8px;
+                transition: background 0.3s;
+                font-weight: 500;
+            }
+
+            .nav-link:hover {
+                background: rgba(255, 255, 255, 0.2);
+            }
+
+            .user-info {
+                display: flex;
+                align-items: center;
+                gap: 1rem;
+            }
+
+            .btn-logout {
+                background: rgba(255, 255, 255, 0.2);
+                border: 1px solid rgba(255, 255, 255, 0.3);
+                color: white;
+                padding: 0.5rem 1rem;
+                border-radius: 8px;
+                cursor: pointer;
+                transition: all 0.3s;
+            }
+
+            .btn-logout:hover {
+                background: rgba(255, 255, 255, 0.3);
+            }
+        </style>
+        <div class="navbar">
+            <h1 onclick="window.location.href='/patient/dashboard'">👤 HealSync Patient</h1>
+            <div class="nav-links">
+                <a href="/patient/dashboard" class="nav-link">Dashboard</a>
+                <a href="/appointments" class="nav-link">My Appointments</a>
+            </div>
+            <div class="user-info">
+                <span id="navUserEmail"></span>
+                <button class="btn-logout" onclick="logout()">Logout</button>
+            </div>
+        </div>
+        <script>
+            document.addEventListener("DOMContentLoaded", () => {
+                const email = localStorage.getItem('userEmail');
+                const doc = document.getElementById('navUserEmail');
+                if (doc && email) doc.innerText = email;
+            });
+
+            function logout() {
+                localStorage.clear();
+                window.location.href = '/login';
+            }
+        </script>
+    </div>
+</body>
+
+</html>

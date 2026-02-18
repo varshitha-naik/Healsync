@@ -1,14 +1,11 @@
 package com.healsync.controller;
 
 import com.healsync.dto.AvailabilityRequest;
-import com.healsync.dto.DoctorPatientDTO;
 import com.healsync.entity.DoctorAvailability;
 import com.healsync.service.DoctorService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
 
 @RestController
 @RequestMapping("/api/doctor")

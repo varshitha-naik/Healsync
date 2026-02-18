@@ -161,13 +161,7 @@
 </head>
 
 <body>
-    <div class="navbar">
-        <h1>🩺 HealSync Doctor</h1>
-        <div class="user-info">
-            <span id="userEmail"></span>
-            <button class="btn-logout" onclick="logout()">Logout</button>
-        </div>
-    </div>
+    <div th:replace="fragments/doctor-navbar :: navbar"></div>
 
     <div class="container">
         <div id="loadingState" class="loading">
@@ -222,7 +216,7 @@
             alert('Access denied. Doctor role required.');
             window.location.href = '/login';
         } else {
-            document.getElementById('userEmail').textContent = userEmail || 'Doctor';
+            // Navbar handles email display
             loadDashboard();
         }
 
@@ -241,14 +235,6 @@
                 console.error('Error loading dashboard:', error);
                 alert('Failed to load dashboard data');
             }
-        }
-
-        function logout() {
-            localStorage.removeItem('jwtToken');
-            localStorage.removeItem('userEmail');
-            localStorage.removeItem('userRole');
-            localStorage.removeItem('userId');
-            window.location.href = '/login';
         }
     </script>
 </body>

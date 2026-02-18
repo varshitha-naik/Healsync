@@ -18,31 +18,7 @@
             color: #2d3748;
         }
 
-        .navbar {
-            background: linear-gradient(135deg, #10B981 0%, #059669 100%);
-            color: white;
-            padding: 1rem 2rem;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-        }
-
-        .navbar h1 {
-            font-size: 1.5rem;
-            font-weight: 700;
-            cursor: pointer;
-        }
-
-        .btn-logout {
-            background: rgba(255, 255, 255, 0.2);
-            border: 1px solid rgba(255, 255, 255, 0.3);
-            color: white;
-            padding: 0.5rem 1rem;
-            border-radius: 8px;
-            cursor: pointer;
-        }
-
+        /* Navbar styles removed - handled by fragment */
         .container {
             max-width: 1200px;
             margin: 2rem auto;
@@ -121,10 +97,7 @@
 </head>
 
 <body>
-    <div class="navbar">
-        <h1 onclick="window.location.href='/doctor/dashboard'">🩺 HealSync Doctor</h1>
-        <button class="btn-logout" onclick="logout()">Logout</button>
-    </div>
+    <div th:replace="fragments/doctor-navbar :: navbar"></div>
 
     <div class="container">
         <div class="card">
@@ -200,7 +173,6 @@
             document.getElementById('historyModal').style.display = 'flex';
 
             try {
-                // If this endpoint fails for doctor, we'd need another endpoint.
                 const res = await fetch(`/api/appointments/patient/${patientId}`, {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
@@ -243,11 +215,6 @@
 
         function closeModal() {
             document.getElementById('historyModal').style.display = 'none';
-        }
-
-        function logout() {
-            localStorage.clear();
-            window.location.href = '/login';
         }
 
         window.onload = loadPatients;

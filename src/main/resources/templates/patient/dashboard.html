@@ -18,41 +18,7 @@
             color: #2d3748;
         }
 
-        .navbar {
-            background: linear-gradient(135deg, #3B82F6 0%, #2563EB 100%);
-            color: white;
-            padding: 1rem 2rem;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-        }
-
-        .navbar h1 {
-            font-size: 1.5rem;
-            font-weight: 700;
-        }
-
-        .user-info {
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-        }
-
-        .btn-logout {
-            background: rgba(255, 255, 255, 0.2);
-            border: 1px solid rgba(255, 255, 255, 0.3);
-            color: white;
-            padding: 0.5rem 1rem;
-            border-radius: 8px;
-            cursor: pointer;
-            transition: all 0.3s;
-        }
-
-        .btn-logout:hover {
-            background: rgba(255, 255, 255, 0.3);
-        }
-
+        /* Navbar handled by fragment */
         .container {
             max-width: 1200px;
             margin: 2rem auto;
@@ -161,13 +127,7 @@
 </head>
 
 <body>
-    <div class="navbar">
-        <h1>👤 HealSync Patient</h1>
-        <div class="user-info">
-            <span id="userEmail"></span>
-            <button class="btn-logout" onclick="logout()">Logout</button>
-        </div>
-    </div>
+    <div th:replace="fragments/patient-navbar :: navbar"></div>
 
     <div class="container">
         <div id="loadingState" class="loading">
@@ -222,7 +182,7 @@
             alert('Access denied. Patient role required.');
             window.location.href = '/login';
         } else {
-            document.getElementById('userEmail').textContent = userEmail || 'Patient';
+            // Navbar handles email display
             loadDashboard();
         }
 
@@ -241,14 +201,6 @@
                 console.error('Error loading dashboard:', error);
                 alert('Failed to load dashboard data');
             }
-        }
-
-        function logout() {
-            localStorage.removeItem('jwtToken');
-            localStorage.removeItem('userEmail');
-            localStorage.removeItem('userRole');
-            localStorage.removeItem('userId');
-            window.location.href = '/login';
         }
     </script>
 </body>

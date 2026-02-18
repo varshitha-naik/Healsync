@@ -1,5 +1,6 @@
 package com.healsync.controller;
 
+import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.GetMapping;
 
@@ -72,7 +73,18 @@ public class WebController {
     }
 
     @GetMapping("/appointments")
-    public String appointments() {
+    public String appointments(Authentication authentication) {
+        if (authentication != null) {
+            boolean isDoctor = authentication.getAuthorities().stream()
+                    .anyMatch(a -> a.getAuthority().equals("ROLE_DOCTOR"));
+            if (isDoctor)
+                return "doctor/appointments";
+
+            boolean isPatient = authentication.getAuthorities().stream()
+                    .anyMatch(a -> a.getAuthority().equals("ROLE_PATIENT"));
+            if (isPatient)
+                return "patient/appointments";
+        }
         return "appointments";
     }
 }
