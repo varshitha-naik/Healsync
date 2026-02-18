@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Patients - HealSync</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: #f5f7fa;
+            color: #2d3748;
+        }
+
+        .navbar {
+            background: linear-gradient(135deg, #10B981 0%, #059669 100%);
+            color: white;
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .navbar h1 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            cursor: pointer;
+        }
+
+        .btn-logout {
+            background: rgba(255, 255, 255, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 2rem auto;
+            padding: 0 2rem;
+        }
+
+        .card {
+            background: white;
+            border-radius: 16px;
+            padding: 1.5rem;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+            margin-bottom: 2rem;
+        }
+
+        h2 {
+            margin-bottom: 1.5rem;
+            color: #2d3748;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th,
+        td {
+            padding: 1rem;
+            text-align: left;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        th {
+            background: #f7fafc;
+            font-weight: 600;
+            color: #718096;
+        }
+
+        tr:hover {
+            background: #f8fafc;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .modal-content {
+            background: white;
+            padding: 25px;
+            border-radius: 8px;
+            width: 90%;
+            max-width: 600px;
+            max-height: 80vh;
+            overflow-y: auto;
+            position: relative;
+        }
+
+        .close-btn {
+            position: absolute;
+            top: 15px;
+            right: 20px;
+            font-size: 1.5rem;
+            cursor: pointer;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="navbar">
+        <h1 onclick="window.location.href='/doctor/dashboard'">🩺 HealSync Doctor</h1>
+        <button class="btn-logout" onclick="logout()">Logout</button>
+    </div>
+
+    <div class="container">
+        <div class="card">
+            <h2>My Patients</h2>
+            <div id="loading">Loading patients...</div>
+            <table id="patientsTable" style="display:none;">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Email</th>
+                        <th>Last Visit</th>
+                    </tr>
+                </thead>
+                <tbody id="patientsBody"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <div id="historyModal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn" onclick="closeModal()">&times;</span>
+            <h3 id="modalTitle">Appointment History</h3>
+            <div id="historyList" style="margin-top: 1rem;"></div>
+        </div>
+    </div>
+
+    <script th:inline="none">
+        const API_BASE = '/api/doctor';
+
+        async function loadPatients() {
+            const token = localStorage.getItem('jwtToken');
+            if (!token) window.location.href = '/login';
+
+            try {
+                const meRes = await fetch('/api/auth/me', { headers: { 'Authorization': `Bearer ${token}` } });
+                const user = await meRes.json();
+
+                const res = await fetch(`${API_BASE}/${user.userId}/patients`, { headers: { 'Authorization': `Bearer ${token}` } });
+                const patients = await res.json();
+
+                const tbody = document.getElementById('patientsBody');
+                tbody.innerHTML = '';
+
+                if (patients.length === 0) {
+                    document.getElementById('loading').innerText = "No patients found.";
+                    return;
+                }
+
+                patients.forEach(p => {
+                    const tr = document.createElement('tr');
+                    // p.patientId is Profile ID.
+                    tr.onclick = () => showHistory(p.patientId, p.patientName);
+                    tr.innerHTML = `
+                        <td>${p.patientName}</td>
+                        <td>${p.email}</td>
+                        <td>${p.lastVisitDate ? new Date(p.lastVisitDate).toLocaleDateString() : '-'}</td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('patientsTable').style.display = 'table';
+            } catch (e) {
+                console.error(e);
+                document.getElementById('loading').innerText = "Error loading patients.";
+            }
+        }
+
+        async function showHistory(patientId, name) {
+            const token = localStorage.getItem('jwtToken');
+            document.getElementById('modalTitle').innerText = `History: ${name}`;
+            document.getElementById('historyList').innerHTML = 'Loading...';
+            document.getElementById('historyModal').style.display = 'flex';
+
+            try {
+                // If this endpoint fails for doctor, we'd need another endpoint.
+                const res = await fetch(`/api/appointments/patient/${patientId}`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+
+                if (!res.ok) throw new Error("Could not fetch history (Access Denied or Error)");
+
+                const apps = await res.json();
+                const list = document.getElementById('historyList');
+                list.innerHTML = '';
+
+                if (apps.length === 0) {
+                    list.innerHTML = '<p>No history found.</p>';
+                    return;
+                }
+
+                apps.forEach(a => {
+                    const div = document.createElement('div');
+                    div.style.borderBottom = "1px solid #eee";
+                    div.style.padding = "10px 0";
+                    div.innerHTML = `
+                        <div style="display:flex; justify-content:space-between;">
+                            <strong>${new Date(a.startDateTime).toLocaleDateString()} ${new Date(a.startDateTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</strong>
+                            <span style="font-weight:bold; color:${getStatusColor(a.status)}">${a.status}</span>
+                        </div>
+                        <p>${a.reason || 'No reason specified'}</p>
+                    `;
+                    list.appendChild(div);
+                });
+            } catch (e) {
+                document.getElementById('historyList').innerText = e.message;
+            }
+        }
+
+        function getStatusColor(status) {
+            if (status === 'CONFIRMED') return 'green';
+            if (status === 'CANCELLED') return 'red';
+            if (status === 'COMPLETED') return 'blue';
+            return 'orange';
+        }
+
+        function closeModal() {
+            document.getElementById('historyModal').style.display = 'none';
+        }
+
+        function logout() {
+            localStorage.clear();
+            window.location.href = '/login';
+        }
+
+        window.onload = loadPatients;
+    </script>
+</body>
+
+</html>

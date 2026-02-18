@@ -56,4 +56,10 @@ public class Appointment {
     @UpdateTimestamp
     @Column(nullable = false)
     private LocalDateTime updatedAt;
+
+    @Transient
+    private String doctorName;
+
+    @Transient
+    private String patientName;
 }

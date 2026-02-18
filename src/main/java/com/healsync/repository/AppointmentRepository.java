@@ -9,22 +9,28 @@ import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface AppointmentRepository extends JpaRepository<Appointment, Long> {
-    List<Appointment> findByDoctorId(Long doctorId);
+        List<Appointment> findByDoctorId(Long doctorId);
 
-    List<Appointment> findByPatientId(Long patientId);
+        List<Appointment> findByPatientId(Long patientId);
 
-    List<Appointment> findByDoctorIdAndStatus(Long doctorId, AppointmentStatus status);
+        List<Appointment> findByDoctorIdAndStatus(Long doctorId, AppointmentStatus status);
 
-    List<Appointment> findByPatientIdAndStatus(Long patientId, AppointmentStatus status);
+        List<Appointment> findByPatientIdAndStatus(Long patientId, AppointmentStatus status);
 
-    @Query("SELECT COUNT(a) > 0 FROM Appointment a WHERE a.doctorId = :doctorId " +
-            "AND a.status NOT IN ('CANCELLED') " +
-            "AND ((a.startDateTime < :endDateTime AND a.endDateTime > :startDateTime))")
-    boolean existsOverlappingAppointment(
-            @Param("doctorId") Long doctorId,
-            @Param("startDateTime") LocalDateTime startDateTime,
-            @Param("endDateTime") LocalDateTime endDateTime);
+        @Query("SELECT DISTINCT a.patientId FROM Appointment a WHERE a.doctorId = :doctorId")
+        List<Long> findDistinctPatientIdsByDoctorId(@Param("doctorId") Long doctorId);
+
+        @Query("SELECT COUNT(a) > 0 FROM Appointment a WHERE a.doctorId = :doctorId " +
+                        "AND a.status NOT IN ('CANCELLED') " +
+                        "AND ((a.startDateTime < :endDateTime AND a.endDateTime > :startDateTime))")
+        boolean existsOverlappingAppointment(
+                        @Param("doctorId") Long doctorId,
+                        @Param("startDateTime") LocalDateTime startDateTime,
+                        @Param("endDateTime") LocalDateTime endDateTime);
+
+        Optional<Appointment> findTopByPatientIdAndDoctorIdOrderByStartDateTimeDesc(Long patientId, Long doctorId);
 }

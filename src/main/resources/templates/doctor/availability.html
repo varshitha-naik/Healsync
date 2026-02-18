@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manage Availability - HealSync</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: #f5f7fa;
+            color: #2d3748;
+        }
+
+        .navbar {
+            background: linear-gradient(135deg, #10B981 0%, #059669 100%);
+            color: white;
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .navbar h1 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            cursor: pointer;
+        }
+
+        .btn-logout {
+            background: rgba(255, 255, 255, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 2rem auto;
+            padding: 0 2rem;
+            display: grid;
+            grid-template-columns: 1fr 2fr;
+            gap: 2rem;
+        }
+
+        .card {
+            background: white;
+            border-radius: 16px;
+            padding: 1.5rem;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+        }
+
+        h2 {
+            margin-bottom: 1.5rem;
+            color: #2d3748;
+        }
+
+        .form-group {
+            margin-bottom: 1rem;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+        }
+
+        select,
+        input {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 0.75rem;
+            background: #10B981;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+
+        .btn-delete {
+            background: #ef4444;
+            width: auto;
+            padding: 0.5rem 1rem;
+            font-size: 0.9rem;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th,
+        td {
+            padding: 1rem;
+            text-align: left;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        th {
+            background: #f7fafc;
+            font-weight: 600;
+            color: #718096;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="navbar">
+        <h1 onclick="window.location.href='/doctor/dashboard'">🩺 HealSync Doctor</h1>
+        <button class="btn-logout" onclick="logout()">Logout</button>
+    </div>
+
+    <div class="container">
+        <!-- Add Form -->
+        <div class="card">
+            <h2>Add Availability</h2>
+            <form id="addForm" onsubmit="addAvailability(event)">
+                <div class="form-group">
+                    <label>Day of Week</label>
+                    <select id="dayOfWeek" required>
+                        <option value="MONDAY">Monday</option>
+                        <option value="TUESDAY">Tuesday</option>
+                        <option value="WEDNESDAY">Wednesday</option>
+                        <option value="THURSDAY">Thursday</option>
+                        <option value="FRIDAY">Friday</option>
+                        <option value="SATURDAY">Saturday</option>
+                        <option value="SUNDAY">Sunday</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Start Time</label>
+                    <input type="time" id="startTime" required>
+                </div>
+                <div class="form-group">
+                    <label>End Time</label>
+                    <input type="time" id="endTime" required>
+                </div>
+                <button type="submit" class="btn">Add Slot</button>
+            </form>
+        </div>
+
+        <!-- List -->
+        <div class="card">
+            <h2>Current Schedule</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Day</th>
+                        <th>From</th>
+                        <th>To</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody id="slotsBody">
+                    <tr>
+                        <td colspan="4">Loading...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script th:inline="none">
+        const API_BASE = '/api/doctor';
+        let currentUserId = null;
+
+        async function init() {
+            const token = localStorage.getItem('jwtToken');
+            if (!token) window.location.href = '/login';
+
+            try {
+                const meRes = await fetch('/api/auth/me', { headers: { 'Authorization': `Bearer ${token}` } });
+                const user = await meRes.json();
+                currentUserId = user.userId;
+
+                loadSlots();
+            } catch (e) {
+                console.error(e);
+            }
+        }
+
+        async function loadSlots() {
+            const token = localStorage.getItem('jwtToken');
+            const res = await fetch(`${API_BASE}/availability/${currentUserId}`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            const slots = await res.json();
+
+            const tbody = document.getElementById('slotsBody');
+            tbody.innerHTML = '';
+
+            if (slots.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="4">No slots added.</td></tr>';
+                return;
+            }
+
+            // Sort by day?
+            const days = { MONDAY: 1, TUESDAY: 2, WEDNESDAY: 3, THURSDAY: 4, FRIDAY: 5, SATURDAY: 6, SUNDAY: 7 };
+            slots.sort((a, b) => days[a.dayOfWeek] - days[b.dayOfWeek] || a.startTime.localeCompare(b.startTime));
+
+            slots.forEach(s => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${s.dayOfWeek}</td>
+                    <td>${s.startTime}</td>
+                    <td>${s.endTime}</td>
+                    <td><button class="btn btn-delete" onclick="deleteSlot(${s.id})">Delete</button></td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        async function addAvailability(e) {
+            e.preventDefault();
+            const token = localStorage.getItem('jwtToken');
+
+            const sTime = document.getElementById('startTime').value;
+            const eTime = document.getElementById('endTime').value;
+
+            // Basic validation
+            if (sTime >= eTime) {
+                alert("Start time must be before End time");
+                return;
+            }
+
+            const payload = {
+                doctorId: currentUserId,
+                dayOfWeek: document.getElementById('dayOfWeek').value,
+                startTime: sTime + ":00", // Ensure HH:mm:ss format
+                endTime: eTime + ":00"
+            };
+
+            try {
+                const res = await fetch(`${API_BASE}/availability`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                    body: JSON.stringify(payload)
+                });
+
+                if (res.ok) {
+                    loadSlots();
+                    // document.getElementById('addForm').reset(); // Optional
+                } else {
+                    const txt = await res.text();
+                    alert("Failed to add slot: " + txt);
+                }
+            } catch (err) {
+                console.error(err);
+                alert("Error connecting to server");
+            }
+        }
+
+        async function deleteSlot(id) {
+            if (!confirm("Remove this slot?")) return; // Using native for simplicity on new page unless asked otherwise
+            const token = localStorage.getItem('jwtToken');
+            await fetch(`${API_BASE}/availability/${id}`, {
+                method: 'DELETE',
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            loadSlots();
+        }
+
+        function logout() {
+            localStorage.clear();
+            window.location.href = '/login';
+        }
+
+        window.onload = init;
+    </script>
+</body>
+
+</html>

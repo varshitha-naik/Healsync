@@ -4,6 +4,7 @@ import com.healsync.entity.Appointment;
 import com.healsync.entity.PatientProfile;
 import com.healsync.enums.AppointmentStatus;
 import com.healsync.repository.AppointmentRepository;
+import com.healsync.repository.DoctorProfileRepository;
 import com.healsync.repository.PatientProfileRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -19,6 +20,7 @@ public class AppointmentService {
 
     private final AppointmentRepository appointmentRepository;
     private final PatientProfileRepository patientProfileRepository;
+    private final DoctorProfileRepository doctorProfileRepository;
 
     @Transactional
     public Appointment bookAppointment(
@@ -48,30 +50,36 @@ public class AppointmentService {
         appointment.setReason(reason);
         appointment.setStatus(AppointmentStatus.REQUESTED);
 
-        return appointmentRepository.save(appointment);
+        Appointment saved = appointmentRepository.save(appointment);
+        populateNames(saved);
+        return saved;
     }
 
     public List<Appointment> getAppointmentsByDoctor(Long doctorId) {
         List<Appointment> appointments = appointmentRepository.findByDoctorId(doctorId);
         appointments.sort(Comparator.comparing(Appointment::getStartDateTime));
+        populateNames(appointments);
         return appointments;
     }
 
     public List<Appointment> getAppointmentsByDoctorAndStatus(Long doctorId, AppointmentStatus status) {
         List<Appointment> appointments = appointmentRepository.findByDoctorIdAndStatus(doctorId, status);
         appointments.sort(Comparator.comparing(Appointment::getStartDateTime));
+        populateNames(appointments);
         return appointments;
     }
 
     public List<Appointment> getAppointmentsByPatient(Long patientId) {
         List<Appointment> appointments = appointmentRepository.findByPatientId(patientId);
         appointments.sort(Comparator.comparing(Appointment::getStartDateTime));
+        populateNames(appointments);
         return appointments;
     }
 
     public List<Appointment> getAppointmentsByPatientAndStatus(Long patientId, AppointmentStatus status) {
         List<Appointment> appointments = appointmentRepository.findByPatientIdAndStatus(patientId, status);
         appointments.sort(Comparator.comparing(Appointment::getStartDateTime));
+        populateNames(appointments);
         return appointments;
     }
 
@@ -87,7 +95,9 @@ public class AppointmentService {
         }
 
         appointment.setStatus(status);
-        return appointmentRepository.save(appointment);
+        Appointment saved = appointmentRepository.save(appointment);
+        populateNames(saved);
+        return saved;
     }
 
     @Transactional
@@ -102,12 +112,17 @@ public class AppointmentService {
 
         appointment.setStatus(AppointmentStatus.CANCELLED);
         appointment.setCancellationReason(reason);
-        return appointmentRepository.save(appointment);
+        Appointment saved = appointmentRepository.save(appointment);
+        populateNames(saved);
+        return saved;
     }
 
     public Appointment getAppointmentById(Long id) {
-        return appointmentRepository.findById(id)
+        Appointment appointment = appointmentRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Appointment not found with ID: " + id));
+
+        populateNames(appointment);
+        return appointment;
     }
 
     @Transactional
@@ -116,6 +131,27 @@ public class AppointmentService {
                 .orElseThrow(() -> new RuntimeException("Appointment not found with ID: " + appointmentId));
 
         appointment.setDoctorNotes(notes);
-        return appointmentRepository.save(appointment);
+        Appointment saved = appointmentRepository.save(appointment);
+        populateNames(saved);
+        return saved;
+    }
+
+    private void populateNames(Appointment appointment) {
+        if (appointment == null)
+            return;
+
+        // Populate Doctor Name (Using userId which is likely doctorId in Appointment)
+        doctorProfileRepository.findByUserId(appointment.getDoctorId())
+                .ifPresent(p -> appointment.setDoctorName(p.getFullName()));
+
+        // Populate Patient Name (Using profileId which is in patientId)
+        patientProfileRepository.findById(appointment.getPatientId())
+                .ifPresent(p -> appointment.setPatientName(p.getFullName()));
+    }
+
+    private void populateNames(List<Appointment> appointments) {
+        if (appointments != null) {
+            appointments.forEach(this::populateNames);
+        }
     }
 }
