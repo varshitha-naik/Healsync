@@ -2,7 +2,7 @@
 <html xmlns:th="http://www.thymeleaf.org">
 
 <body>
-    <div th:fragment="navbar">
+    <div th:fragment="header">
         <style>
             .navbar {
                 background: linear-gradient(135deg, #3B82F6 0%, #2563EB 100%);
@@ -72,19 +72,18 @@
                 <button class="btn-logout" onclick="logout()">Logout</button>
             </div>
         </div>
-    </div>
-    <script>
-        document.addEventListener("DOMContentLoaded", () => {
-            const email = localStorage.getItem('userEmail');
-            const doc = document.getElementById('navUserEmail');
-            if (doc && email) doc.innerText = email;
-        });
+        <script>
+            document.addEventListener("DOMContentLoaded", () => {
+                const email = localStorage.getItem('userEmail');
+                const doc = document.getElementById('navUserEmail');
+                if (doc && email) doc.innerText = email;
+            });
 
-        function logout() {
-            localStorage.clear();
-            window.location.href = '/login';
-        }
-    </script>
+            function logout() {
+                localStorage.clear();
+                window.location.href = '/login';
+            }
+        </script>
     </div>
 </body>
 

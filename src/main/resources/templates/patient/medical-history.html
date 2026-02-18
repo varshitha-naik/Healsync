@@ -93,7 +93,7 @@
 </head>
 
 <body>
-    <div th:replace="fragments/patient-navbar :: navbar"></div>
+    <div th:replace="fragments/patient-header :: header"></div>
 
     <div class="container">
         <div class="card">
@@ -159,7 +159,7 @@
                 const date = new Date(h.startDateTime).toLocaleDateString() + ' ' + new Date(h.startDateTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
                 tr.innerHTML = `
                     <td>${date}</td>
-                    <td>${h.doctorName || 'Dr. ' + h.doctorId}</td>
+                    <td>${h.doctorName ? h.doctorName : 'Dr. ' + h.doctorId}</td>
                     <td>${h.reason || '-'}</td>
                     <td><span class="status-badge status-${h.status}">${h.status}</span></td>
                     <td>${h.doctorNotes || '-'}</td>
