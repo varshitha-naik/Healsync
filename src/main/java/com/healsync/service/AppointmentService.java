@@ -1,6 +1,7 @@
 package com.healsync.service;
 
 import com.healsync.entity.Appointment;
+import com.healsync.entity.DoctorProfile;
 import com.healsync.entity.PatientProfile;
 import com.healsync.enums.AppointmentStatus;
 import com.healsync.repository.AppointmentRepository;
@@ -30,15 +31,50 @@ public class AppointmentService {
     @Transactional
     public Appointment bookAppointment(
             Long clinicId,
-            Long doctorId,
+            Long doctorId, // This is User ID from frontend
             Long patientId,
             LocalDateTime start,
             LocalDateTime end,
-            String reason) {
-        // Check for overlapping appointments
-        boolean overlap = appointmentRepository.existsOverlappingAppointment(doctorId, start, end);
-        if (overlap) {
-            throw new RuntimeException("Doctor has an overlapping appointment at this time");
+            String reason,
+            String specialization) {
+
+        Long finalDoctorProfileId = null;
+
+        // Smart Doctor Assignment based on Specialization
+        if (doctorId == null) {
+            if (specialization == null || specialization.isBlank()) {
+                throw new RuntimeException("Either a Doctor or Specialization must be selected.");
+            }
+
+            // Find all doctors with specialization
+            List<com.healsync.entity.DoctorProfile> doctors = doctorProfileRepository
+                    .findBySpecialization(specialization);
+
+            for (com.healsync.entity.DoctorProfile doc : doctors) {
+                // Check availability using Profile ID
+                boolean overlap = appointmentRepository.existsOverlappingAppointment(doc.getId(), start, end);
+                if (!overlap) {
+                    finalDoctorProfileId = doc.getId(); // Assign Profile ID
+                    break;
+                }
+            }
+
+            if (finalDoctorProfileId == null) {
+                throw new RuntimeException("No doctor available for selected specialization: " + specialization);
+            }
+        } else {
+            // Specific doctor requested (doctorId is USER ID from frontend)
+            // Must resolve to Profile ID
+            com.healsync.entity.DoctorProfile docProfile = doctorProfileRepository.findByUserId(doctorId)
+                    .orElseThrow(() -> new RuntimeException("Doctor profile not found for user ID: " + doctorId));
+
+            finalDoctorProfileId = docProfile.getId(); // Assign Profile ID
+
+            // Check availability
+            boolean overlap = appointmentRepository.existsOverlappingAppointment(finalDoctorProfileId, start, end);
+            if (overlap) {
+                throw new RuntimeException("Doctor has an overlapping appointment at this time");
+            }
         }
 
         // Fetch patient profile using userId (passed as patientId)
@@ -48,7 +84,7 @@ public class AppointmentService {
         // Create new appointment
         Appointment appointment = new Appointment();
         appointment.setClinicId(clinicId);
-        appointment.setDoctorId(doctorId);
+        appointment.setDoctorId(finalDoctorProfileId); // Set DoctorProfile ID
         appointment.setPatientId(profile.getId());
         appointment.setStartDateTime(start);
         appointment.setEndDateTime(end);
@@ -60,48 +96,12 @@ public class AppointmentService {
 
         // Send Email Notification
         try {
-            String patientEmail = userRepository.findById(appointment.getPatientId()) // UserID !
-                    .map(u -> u.getEmail())
-                    .orElse(null);
-
-            // Note: In datamodel, appointment.patientId is actually ProfileId or UserId?
-            // Checking bookAppointment: appointment.setPatientId(profile.getId()); -> It
-            // uses Profile ID!
-            // Wait. Appointment.patientId store logic:
-            // profile = patientProfileRepository.findByUserId(patientId)
-            // appointment.setPatientId(profile.getId());
-            // This means Appointment stores PROFILE ID.
-
-            // CORRECTION: I need to get User from Profile.
-            // But PatientProfile has userId.
-            // profile already fetched above.
-
             String pEmail = userRepository.findById(profile.getUserId()).map(u -> u.getEmail()).orElse(null);
 
-            // Doctor Email
-            // Need doctor profile to get userId
-            var docProfile = doctorProfileRepository.findByUserId(doctorId).orElse(null);
-            // wait, bookAppointment takes doctorId. Is it ProfileID or UserID?
-            // "Long doctorId" parameter.
-            // looking at DoctorController, it usually passes UserID.
-            // Check usage: appointmentRepository.existsOverlappingAppointment(doctorId,
-            // ...)
-            // doctorProfileRepository.findByUserId(doctorId) -> This implies doctorId IS
-            // UserId.
-
-            String dEmail = null;
-            String dName = "Doctor";
-            if (docProfile != null) {
-                dEmail = userRepository.findById(docProfile.getUserId()).map(u -> u.getEmail()).orElse(null);
-                dName = docProfile.getFullName();
-            } else {
-                // Try to fetch profile assuming doctorId is UserId
-                docProfile = doctorProfileRepository.findByUserId(doctorId).orElse(null);
-                if (docProfile != null) {
-                    dName = docProfile.getFullName();
-                    dEmail = userRepository.findById(docProfile.getUserId()).map(u -> u.getEmail()).orElse(null);
-                }
-            }
+            // Fetch assigned doctor details for email
+            // Use findById because finalDoctorProfileId is Profile ID
+            var docProfile = doctorProfileRepository.findById(finalDoctorProfileId).orElse(null);
+            String dName = (docProfile != null) ? docProfile.getFullName() : "Doctor";
 
             if (pEmail != null) {
                 emailService.sendAppointmentRequested(pEmail, profile.getFullName(), dName, start.toString());
@@ -113,29 +113,65 @@ public class AppointmentService {
         return saved;
     }
 
-    public List<Appointment> getAppointmentsByDoctor(Long doctorId) {
-        List<Appointment> appointments = appointmentRepository.findByDoctorId(doctorId);
+    public List<Appointment> getAppointmentsByDoctor(Long userId) {
+        // Resolve Profile ID from User ID
+        Long profileId = doctorProfileRepository.findByUserId(userId)
+                .map(DoctorProfile::getId)
+                .orElse(null);
+
+        if (profileId == null) {
+            return List.of(); // or throw exception
+        }
+
+        List<Appointment> appointments = appointmentRepository.findByDoctorId(profileId);
         appointments.sort(Comparator.comparing(Appointment::getStartDateTime));
         populateNames(appointments);
         return appointments;
     }
 
-    public List<Appointment> getAppointmentsByDoctorAndStatus(Long doctorId, AppointmentStatus status) {
-        List<Appointment> appointments = appointmentRepository.findByDoctorIdAndStatus(doctorId, status);
+    public List<Appointment> getAppointmentsByDoctorAndStatus(Long userId, AppointmentStatus status) {
+        // Resolve Profile ID from User ID
+        Long profileId = doctorProfileRepository.findByUserId(userId)
+                .map(DoctorProfile::getId)
+                .orElse(null);
+
+        if (profileId == null) {
+            return List.of();
+        }
+
+        List<Appointment> appointments = appointmentRepository.findByDoctorIdAndStatus(profileId, status);
         appointments.sort(Comparator.comparing(Appointment::getStartDateTime));
         populateNames(appointments);
         return appointments;
     }
 
     public List<Appointment> getAppointmentsByPatient(Long patientId) {
-        List<Appointment> appointments = appointmentRepository.findByPatientId(patientId);
+        // patientId argument is actually the User ID. Resolve Profile ID first.
+        Long profileId = patientProfileRepository.findByUserId(patientId)
+                .map(PatientProfile::getId)
+                .orElse(null);
+
+        if (profileId == null) {
+            return List.of();
+        }
+
+        List<Appointment> appointments = appointmentRepository.findByPatientId(profileId);
         appointments.sort(Comparator.comparing(Appointment::getStartDateTime));
         populateNames(appointments);
         return appointments;
     }
 
     public List<Appointment> getAppointmentsByPatientAndStatus(Long patientId, AppointmentStatus status) {
-        List<Appointment> appointments = appointmentRepository.findByPatientIdAndStatus(patientId, status);
+        // patientId argument is actually the User ID. Resolve Profile ID first.
+        Long profileId = patientProfileRepository.findByUserId(patientId)
+                .map(PatientProfile::getId)
+                .orElse(null);
+
+        if (profileId == null) {
+            return List.of();
+        }
+
+        List<Appointment> appointments = appointmentRepository.findByPatientIdAndStatus(profileId, status);
         appointments.sort(Comparator.comparing(Appointment::getStartDateTime));
         populateNames(appointments);
         return appointments;
@@ -194,7 +230,7 @@ public class AppointmentService {
     }
 
     private void sendEmailNotification(Appointment appointment, String type) {
-        // Resolve Patient
+        // Resolve Patient (patientId is Profile ID)
         var patientProfile = patientProfileRepository.findById(appointment.getPatientId()).orElse(null);
         if (patientProfile == null)
             return;
@@ -203,12 +239,8 @@ public class AppointmentService {
         if (patientUser == null)
             return;
 
-        // Resolve Doctor
-        // Appointment stores doctorId. Based on bookAppointment logic, this seems to be
-        // passed directly.
-        // Assuming doctorId in Appointment is USER ID (based on
-        // doctorProfileRepository.findByUserId call in populateNames)
-        var doctorProfile = doctorProfileRepository.findByUserId(appointment.getDoctorId()).orElse(null);
+        // Resolve Doctor (doctorId is Profile ID)
+        var doctorProfile = doctorProfileRepository.findById(appointment.getDoctorId()).orElse(null);
         String docName = (doctorProfile != null) ? doctorProfile.getFullName() : "Doctor";
 
         if ("CONFIRMED".equals(type)) {
@@ -250,11 +282,11 @@ public class AppointmentService {
         if (appointment == null)
             return;
 
-        // Populate Doctor Name (Using userId which is likely doctorId in Appointment)
-        doctorProfileRepository.findByUserId(appointment.getDoctorId())
+        // Populate Doctor Name (Using Profile ID)
+        doctorProfileRepository.findById(appointment.getDoctorId())
                 .ifPresent(p -> appointment.setDoctorName(p.getFullName()));
 
-        // Populate Patient Name (Using profileId which is in patientId)
+        // Populate Patient Name (Using Profile ID)
         patientProfileRepository.findById(appointment.getPatientId())
                 .ifPresent(p -> appointment.setPatientName(p.getFullName()));
     }

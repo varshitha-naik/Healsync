@@ -14,4 +14,6 @@ public interface DoctorProfileRepository extends JpaRepository<DoctorProfile, Lo
     List<DoctorProfile> findByClinicId(Long clinicId);
 
     boolean existsByLicenseNumber(String licenseNumber);
+
+    List<DoctorProfile> findBySpecialization(String specialization);
 }

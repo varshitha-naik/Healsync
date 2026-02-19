@@ -345,8 +345,21 @@
                 <input type="hidden" id="patientId">
 
                 <div class="form-grid">
+                    <div class="form-group full-width">
+                        <label>Specialization:</label>
+                        <select id="specialization"
+                            style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+                            <option value="">-- Select Category --</option>
+                            <option value="General Medicine">General Medicine</option>
+                            <option value="Cardiology">Cardiology</option>
+                            <option value="Orthopedics">Orthopedics</option>
+                            <option value="Pediatrics">Pediatrics</option>
+                            <option value="Dermatology">Dermatology</option>
+                            <option value="Neurology">Neurology</option>
+                        </select>
+                    </div>
 
-                    <div class="form-group">
+                    <div class="form-group full-width">
                         <label>Reason:</label>
                         <input type="text" id="reason">
                     </div>
@@ -436,7 +449,17 @@
             }
 
             const doctorIdInput = document.getElementById('doctorId').value;
-            const doctorId = doctorIdInput ? Number(doctorIdInput) : 1;
+            const doctorId = doctorIdInput ? Number(doctorIdInput) : null;
+            const specialization = document.getElementById('specialization').value;
+
+            // If no doctor is pre-selected (via URL), specialization is mandatory.
+            if (!doctorId && !specialization) {
+                showError("Please select a specialization.");
+                // Re-enable button
+                btn.disabled = false;
+                btn.textContent = "Book Appointment";
+                return;
+            }
 
             const patientId = document.getElementById('patientId').value;
 
@@ -446,7 +469,8 @@
                 patientId: Number(patientId),
                 start: startVal + ":00",
                 end: endVal + ":00",
-                reason: document.getElementById('reason').value
+                reason: document.getElementById('reason').value,
+                specialization: specialization
             };
 
             console.log("Booking payload:", payload);
@@ -542,7 +566,7 @@
                 if (user.role === 'DOCTOR') {
                     url = `${API_BASE}/doctor/${user.userId}`;
                 } else if (user.role === 'PATIENT') {
-                    url = `${API_BASE}/patient/${user.userId}`;
+                    url = `/api/patient/appointments`;
                 } else {
                     if (user.role === 'ADMIN') {
                         throw new Error('Admin view not fully implemented for this page yet.');
@@ -552,7 +576,8 @@
 
                 // Append status filter if selected
                 if (statusFilter) {
-                    url += `?status=${statusFilter}`;
+                    const separator = url.includes('?') ? '&' : '?';
+                    url += `${separator}status=${statusFilter}`;
                 }
 
                 // Fetch appointments
@@ -734,12 +759,38 @@
             }
         }
 
-        async function cancelAppointment(id) {
-            const reason = prompt("Please enter cancellation reason:");
-            if (!reason) return;
+        let currentCancellationId = null;
+
+        function openCancellationModal(id) {
+            currentCancellationId = id;
+            document.getElementById('cancellationReason').value = '';
+            document.getElementById('cancellationError').style.display = 'none';
+            document.getElementById('cancellationModal').classList.remove('hidden');
+        }
+
+        function closeCancellationModal() {
+            currentCancellationId = null;
+            document.getElementById('cancellationModal').classList.add('hidden');
+        }
+
+        async function submitCancellation() {
+            const reason = document.getElementById('cancellationReason').value.trim();
+            const errorEl = document.getElementById('cancellationError');
+
+            if (!reason) {
+                errorEl.innerText = 'Cancellation reason is required.';
+                errorEl.style.display = 'block';
+                return;
+            }
 
             try {
-                const response = await fetch(`${API_BASE}/${id}/cancel`, {
+                // Disable button to prevent double submit
+                const btn = document.querySelector('#cancellationModal .btn-cancel');
+                const originalText = btn.innerText;
+                btn.disabled = true;
+                btn.innerText = 'Cancelling...';
+
+                const response = await fetch(`${API_BASE}/${currentCancellationId}/cancel`, {
                     method: 'PUT',
                     headers: getAuthHeaders(),
                     body: JSON.stringify({ reason: reason })
@@ -751,10 +802,26 @@
                 }
 
                 showSuccess('Appointment cancelled successfully');
+                closeCancellationModal();
                 loadAppointments();
+
             } catch (error) {
                 showError(error.message);
+                // Re-enable button on error
+                const btn = document.querySelector('#cancellationModal .btn-cancel');
+                btn.disabled = false;
+                btn.innerText = 'Confirm Cancel';
+            } finally {
+                // Re-enable button
+                const btn = document.querySelector('#cancellationModal .btn-cancel');
+                btn.disabled = false;
+                btn.innerText = 'Confirm Cancel';
             }
+        }
+
+        // Wrapper to open modal
+        function cancelAppointment(id) {
+            openCancellationModal(id);
         }
 
         async function saveNotes(id) {
@@ -875,6 +942,28 @@
             <div class="modal-btn-group">
                 <button id="confirmYes" class="btn-confirm" style="padding: 8px 20px; cursor: pointer;">Yes</button>
                 <button id="confirmNo" class="refresh-btn" style="padding: 8px 20px; cursor: pointer;">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Cancellation Modal -->
+    <div id="cancellationModal" class="modal hidden">
+        <div class="modal-content" style="max-width: 400px; text-align: left;">
+            <h3 style="margin-top: 0; color: #dc3545; text-align: center;">Cancel Appointment</h3>
+            <p style="font-size: 14px; color: #666; text-align: center; margin-bottom: 20px;">
+                Are you sure you want to cancel? This action cannot be undone.
+            </p>
+
+            <label for="cancellationReason" style="font-weight: bold; display: block; margin-bottom: 5px;">Reason for
+                cancellation <span style="color: red;">*</span></label>
+            <textarea id="cancellationReason" rows="4" placeholder="Please provide a reason..."
+                style="width: 100%; padding: 8px; border-radius: 4px; border: 1px solid #ccc; font-family: inherit; box-sizing: border-box;"></textarea>
+            <p id="cancellationError" style="color: red; font-size: 12px; display: none; margin-top: 5px;"></p>
+
+            <div class="modal-btn-group" style="justify-content: flex-end; margin-top: 20px;">
+                <button onclick="closeCancellationModal()" class="refresh-btn"
+                    style="margin-right: 10px;">Close</button>
+                <button onclick="submitCancellation()" class="btn-cancel">Confirm Cancel</button>
             </div>
         </div>
     </div>

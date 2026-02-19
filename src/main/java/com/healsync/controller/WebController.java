@@ -93,13 +93,23 @@ public class WebController {
             boolean isDoctor = authentication.getAuthorities().stream()
                     .anyMatch(a -> a.getAuthority().equals("ROLE_DOCTOR"));
             if (isDoctor)
-                return "doctor/appointments";
+                return "redirect:/doctor/appointments";
 
             boolean isPatient = authentication.getAuthorities().stream()
                     .anyMatch(a -> a.getAuthority().equals("ROLE_PATIENT"));
             if (isPatient)
-                return "patient/appointments";
+                return "redirect:/patient/appointments";
         }
-        return "appointments";
+        return "redirect:/login";
+    }
+
+    @GetMapping("/doctor/appointments")
+    public String doctorAppointments() {
+        return "doctor/appointments";
+    }
+
+    @GetMapping("/patient/appointments")
+    public String patientAppointments() {
+        return "patient/appointments";
     }
 }

@@ -39,7 +39,8 @@ public class AppointmentController {
                 request.getPatientId(),
                 startDateTime,
                 endDateTime,
-                request.getReason());
+                request.getReason(),
+                request.getSpecialization());
 
         return ResponseEntity.ok(appointment);
     }

@@ -61,4 +61,30 @@ public class PatientController {
         List<Appointment> history = appointmentService.getAppointmentsByPatient(profile.get().getId());
         return ResponseEntity.ok(history);
     }
+
+    @GetMapping("/appointments")
+    public ResponseEntity<List<Appointment>> getMyAppointments(
+            org.springframework.security.core.Authentication authentication,
+            @RequestParam(required = false) String status) {
+
+        if (authentication == null) {
+            return ResponseEntity.status(401).build();
+        }
+
+        String email = authentication.getName();
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("User not found: " + email));
+
+        if (status != null && !status.isEmpty()) {
+            try {
+                com.healsync.enums.AppointmentStatus apptStatus = com.healsync.enums.AppointmentStatus
+                        .valueOf(status.toUpperCase());
+                return ResponseEntity
+                        .ok(appointmentService.getAppointmentsByPatientAndStatus(user.getId(), apptStatus));
+            } catch (IllegalArgumentException e) {
+                throw new RuntimeException("Invalid appointment status: " + status);
+            }
+        }
+        return ResponseEntity.ok(appointmentService.getAppointmentsByPatient(user.getId()));
+    }
 }

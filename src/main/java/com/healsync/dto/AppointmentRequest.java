@@ -10,8 +10,9 @@ public class AppointmentRequest {
     @NotNull(message = "Clinic ID is required")
     private Long clinicId;
 
-    @NotNull(message = "Doctor ID is required")
     private Long doctorId;
+
+    private String specialization;
 
     @NotNull(message = "Patient ID is required")
     private Long patientId;
