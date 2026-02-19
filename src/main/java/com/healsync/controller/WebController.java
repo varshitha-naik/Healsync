@@ -67,6 +67,11 @@ public class WebController {
         return "doctor/dashboard";
     }
 
+    @GetMapping("/doctor/profile")
+    public String doctorProfile() {
+        return "doctor/profile";
+    }
+
     @GetMapping("/patient/dashboard")
     public String patientDashboard() {
         return "patient/dashboard";
