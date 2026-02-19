@@ -308,6 +308,9 @@
 </head>
 
 <body>
+    <div sec:authorize="hasRole('PATIENT')">
+        <div th:replace="fragments/patient-header :: header"></div>
+    </div>
 
     <div class="container">
         <h2>Manage Appointments</h2>
