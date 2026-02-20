@@ -38,6 +38,17 @@ public class AppointmentService {
             String reason,
             String specialization) {
 
+        // Date-Time Validation
+        if (start.isBefore(LocalDateTime.now())) {
+            throw new RuntimeException("Cannot book appointment in the past. Please select a future time slot.");
+        }
+        if (end.isBefore(start)) {
+            throw new RuntimeException("End time must be after start time.");
+        }
+        if (!end.isAfter(start)) {
+            throw new RuntimeException("Invalid appointment duration.");
+        }
+
         Long finalDoctorProfileId = null;
 
         // Smart Doctor Assignment based on Specialization

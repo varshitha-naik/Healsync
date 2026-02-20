@@ -387,7 +387,7 @@
             </select>
             <button onclick="loadAppointments()">Load Appointments</button>
             <button onclick="loadConfirmedOnly()" style="background-color: #fd7e14;">Show Confirmed Only</button>
-            <button class="refresh-btn" onclick="loadAppointments()">Refresh</button>
+            <button class="refresh-btn" onclick="refreshApp()">Refresh</button>
         </div>
 
         <!-- List -->
@@ -433,6 +433,30 @@
             el.className = 'error';
             el.innerText = msg;
             el.style.display = 'block';
+        }
+
+        function hideErrorMessage() {
+            const el = document.getElementById('errorMessage');
+            el.style.display = 'none';
+        }
+
+        function resetBookingForm() {
+            document.getElementById("specialization").value = "";
+            document.getElementById("reason").value = "";
+            document.getElementById("start").value = "";
+            document.getElementById("end").value = "";
+
+            // Clear hidden doctorId unless we want to persist it? 
+            // User requested: selectedDoctorId (if stored in JS)
+            // But doctorId is in a hidden input field.
+            document.getElementById("doctorId").value = "";
+
+            hideErrorMessage();
+        }
+
+        function refreshApp() {
+            resetBookingForm();
+            loadAppointments();
         }
 
         async function bookAppointment(event) {
@@ -882,18 +906,20 @@
                 if (!meResponse.ok) throw new Error("Failed to check user role");
                 const user = await meResponse.json();
 
-                if (user.role !== 'DOCTOR') {
-                    showError("Only doctors can use this view");
+                let url;
+                if (user.role === 'DOCTOR') {
+                    url = `${API_BASE}/doctor/${user.userId}?status=CONFIRMED`;
+                } else if (user.role === 'PATIENT') {
+                    url = `/api/patient/appointments?status=CONFIRMED`;
+                } else {
+                    showError("This view is not supported for your role: " + user.role);
                     return;
                 }
 
-                const response = await fetch(
-                    `${API_BASE}/doctor/${user.userId}?status=CONFIRMED`,
-                    {
-                        method: 'GET',
-                        headers: getAuthHeaders()
-                    }
-                );
+                const response = await fetch(url, {
+                    method: 'GET',
+                    headers: getAuthHeaders()
+                });
 
                 if (!response.ok) throw new Error("Failed to load confirmed appointments");
                 const appointments = await response.json();
@@ -932,7 +958,19 @@
         }
 
         // Auto-load on page load
-        window.onload = loadAppointments;
+        window.onload = function () {
+            loadAppointments();
+
+            // Clear error when user changes inputs
+            ['specialization', 'start', 'end'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.addEventListener('input', hideErrorMessage);
+            });
+
+            // Also for select change
+            const spec = document.getElementById('specialization');
+            if (spec) spec.addEventListener('change', hideErrorMessage);
+        };
     </script>
 
     <!-- Custom Confirm Modal -->

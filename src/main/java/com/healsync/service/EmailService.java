@@ -33,15 +33,39 @@ public class EmailService {
         String body = String.format(
                 """
                         <p>Dear <strong>%s</strong>,</p>
-                        <p>Your appointment request has been received and is pending confirmation.</p>
+                        <p>Your appointment request has been received and is pending confirmation from the doctor.</p>
 
-                        <div style="background-color: #f3f4f6; padding: 15px; border-radius: 8px; margin: 20px 0;">
-                            <p style="margin: 5px 0;"><strong>Doctor:</strong> %s</p>
-                            <p style="margin: 5px 0;"><strong>Date & Time:</strong> %s</p>
-                            <p style="margin: 5px 0;"><strong>Status:</strong> <span style="color: #ea580c; font-weight: bold;">PENDING</span></p>
+                        <!-- Appointment Details Card -->
+                        <div style="background-color: #ffffff; border: 1px solid #e5e7eb; border-radius: 8px; padding: 20px; margin: 25px 0; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+                            <h3 style="margin-top: 0; color: #111827; border-bottom: 2px solid #10B981; padding-bottom: 10px; display: inline-block;">Appointment Details</h3>
+                            <table style="width: 100%%; border-collapse: collapse; margin-top: 10px;">
+                                <tr>
+                                    <td style="padding: 8px 0; color: #6b7280; font-weight: bold; width: 120px;">Doctor:</td>
+                                    <td style="padding: 8px 0; color: #111827;">%s</td>
+                                </tr>
+                                <tr>
+                                    <td style="padding: 8px 0; color: #6b7280; font-weight: bold;">Date & Time:</td>
+                                    <td style="padding: 8px 0; color: #111827;">%s</td>
+                                </tr>
+                                <tr>
+                                    <td style="padding: 8px 0; color: #6b7280; font-weight: bold;">Status:</td>
+                                    <td style="padding: 8px 0;"><span style="background-color: #fff7ed; color: #c2410c; padding: 4px 10px; border-radius: 12px; font-weight: bold; font-size: 12px; border: 1px solid #ffedd5;">PENDING</span></td>
+                                </tr>
+                            </table>
                         </div>
 
-                        <p>You will receive another email once the doctor confirms the appointment.</p>
+                        <!-- Professional Guidance -->
+                        <div style="background-color: #f9fafb; padding: 15px; border-radius: 6px; margin-bottom: 25px; border-left: 4px solid #10B981;">
+                            <p style="margin: 0 0 10px 0; font-weight: bold; color: #374151;">What to expect:</p>
+                            <ul style="margin: 0; padding-left: 20px; color: #4b5563;">
+                                <li style="margin-bottom: 5px;">You will be notified once the doctor confirms.</li>
+                                <li style="margin-bottom: 5px;">Please verify your contact details in the dashboard.</li>
+                            </ul>
+                        </div>
+
+                        <div style="text-align: center; margin: 30px 0;">
+                            <a href="http://localhost:8080/patient/appointments" style="background-color: #10B981; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 16px; display: inline-block;">View My Appointments</a>
+                        </div>
                         """,
                 patientName, ensureDoctorTitle(doctorName), formattedDate);
 
@@ -57,13 +81,38 @@ public class EmailService {
                         <p>Dear <strong>%s</strong>,</p>
                         <p>Good news! Your appointment has been officially confirmed.</p>
 
-                        <div style="background-color: #ecfdf5; border: 1px solid #d1fae5; padding: 15px; border-radius: 8px; margin: 20px 0;">
-                            <p style="margin: 5px 0; color: #065f46;"><strong>Doctor:</strong> %s</p>
-                            <p style="margin: 5px 0; color: #065f46;"><strong>Date & Time:</strong> %s</p>
-                            <p style="margin: 5px 0; color: #065f46;"><strong>Status:</strong> <span style="color: #059669; font-weight: bold;">CONFIRMED</span></p>
+                        <!-- Appointment Details Card -->
+                        <div style="background-color: #ffffff; border: 1px solid #d1fae5; border-radius: 8px; padding: 20px; margin: 25px 0; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+                            <h3 style="margin-top: 0; color: #111827; border-bottom: 2px solid #059669; padding-bottom: 10px; display: inline-block;">Appointment Details</h3>
+                            <table style="width: 100%%; border-collapse: collapse; margin-top: 10px;">
+                                <tr>
+                                    <td style="padding: 8px 0; color: #6b7280; font-weight: bold; width: 120px;">Doctor:</td>
+                                    <td style="padding: 8px 0; color: #111827;">%s</td>
+                                </tr>
+                                <tr>
+                                    <td style="padding: 8px 0; color: #6b7280; font-weight: bold;">Date & Time:</td>
+                                    <td style="padding: 8px 0; color: #111827;">%s</td>
+                                </tr>
+                                <tr>
+                                    <td style="padding: 8px 0; color: #6b7280; font-weight: bold;">Status:</td>
+                                    <td style="padding: 8px 0;"><span style="background-color: #ecfdf5; color: #047857; padding: 4px 10px; border-radius: 12px; font-weight: bold; font-size: 12px; border: 1px solid #a7f3d0;">CONFIRMED</span></td>
+                                </tr>
+                            </table>
                         </div>
 
-                        <p>Please arrive <strong>10 minutes early</strong> to complete any necessary check-in procedures.</p>
+                        <!-- Professional Guidance -->
+                        <div style="background-color: #f0fdf4; padding: 15px; border-radius: 6px; margin-bottom: 25px; border-left: 4px solid #059669;">
+                            <p style="margin: 0 0 10px 0; font-weight: bold; color: #065f46;">What to expect:</p>
+                            <ul style="margin: 0; padding-left: 20px; color: #1f2937;">
+                                <li style="margin-bottom: 5px;">Please arrive <strong>10 minutes early</strong>.</li>
+                                <li style="margin-bottom: 5px;">Bring previous medical reports if available.</li>
+                                <li style="margin-bottom: 5px;">Contact the clinic if rescheduling is required.</li>
+                            </ul>
+                        </div>
+
+                        <div style="text-align: center; margin: 30px 0;">
+                            <a href="http://localhost:8080/patient/appointments" style="background-color: #059669; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 16px; display: inline-block;">View Appointment</a>
+                        </div>
                         """,
                 patientName, ensureDoctorTitle(doctorName), formattedDate);
 
@@ -80,14 +129,34 @@ public class EmailService {
                         <p>Dear <strong>%s</strong>,</p>
                         <p>We regret to inform you that your appointment has been cancelled.</p>
 
-                        <div style="background-color: #fef2f2; border: 1px solid #fee2e2; padding: 15px; border-radius: 8px; margin: 20px 0;">
-                            <p style="margin: 5px 0; color: #991b1b;"><strong>Doctor:</strong> %s</p>
-                            <p style="margin: 5px 0; color: #991b1b;"><strong>Date:</strong> %s</p>
-                            <p style="margin: 5px 0; color: #991b1b;"><strong>Reason:</strong> %s</p>
-                            <p style="margin: 5px 0; color: #991b1b;"><strong>Status:</strong> <span style="color: #dc2626; font-weight: bold;">CANCELLED</span></p>
+                        <!-- Appointment Details Card -->
+                        <div style="background-color: #ffffff; border: 1px solid #fee2e2; border-radius: 8px; padding: 20px; margin: 25px 0; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+                            <h3 style="margin-top: 0; color: #111827; border-bottom: 2px solid #dc2626; padding-bottom: 10px; display: inline-block;">Cancellation Details</h3>
+                            <table style="width: 100%%; border-collapse: collapse; margin-top: 10px;">
+                                <tr>
+                                    <td style="padding: 8px 0; color: #6b7280; font-weight: bold; width: 120px;">Doctor:</td>
+                                    <td style="padding: 8px 0; color: #111827;">%s</td>
+                                </tr>
+                                <tr>
+                                    <td style="padding: 8px 0; color: #6b7280; font-weight: bold;">Original Date:</td>
+                                    <td style="padding: 8px 0; color: #111827;">%s</td>
+                                </tr>
+                                <tr>
+                                    <td style="padding: 8px 0; color: #6b7280; font-weight: bold;">Reason:</td>
+                                    <td style="padding: 8px 0; color: #dc2626;">%s</td>
+                                </tr>
+                                <tr>
+                                    <td style="padding: 8px 0; color: #6b7280; font-weight: bold;">Status:</td>
+                                    <td style="padding: 8px 0;"><span style="background-color: #fef2f2; color: #991b1b; padding: 4px 10px; border-radius: 12px; font-weight: bold; font-size: 12px; border: 1px solid #fecaca;">CANCELLED</span></td>
+                                </tr>
+                            </table>
                         </div>
 
-                        <p>We apologize for any inconvenience. Please visit the portal to reschedule your appointment.</p>
+                        <p>We apologize for any inconvenience. If this cancellation was unexpected, please contact the clinic or book a new appointment.</p>
+
+                        <div style="text-align: center; margin: 30px 0;">
+                            <a href="http://localhost:8080/patient/appointments" style="background-color: #4b5563; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 16px; display: inline-block;">Reschedule Appointment</a>
+                        </div>
                         """,
                 patientName, ensureDoctorTitle(doctorName), formattedDate, reason);
 
@@ -161,38 +230,38 @@ public class EmailService {
                             <meta name="viewport" content="width=device-width, initial-scale=1.0">
                             <title>%s</title>
                             <style>
-                                body { margin: 0; padding: 0; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; background-color: #f3f4f6; }
-                                .container { max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-                                .header { background: linear-gradient(135deg, #10B981 0%%, #059669 100%%); color: white; padding: 20px; text-align: center; }
-                                .header h1 { margin: 0; font-size: 24px; font-weight: 700; letter-spacing: 1px; }
-                                .content { padding: 30px 20px; color: #374151; line-height: 1.6; font-size: 16px; }
-                                .footer { background-color: #f9fafb; padding: 20px; text-align: center; color: #6b7280; font-size: 12px; border-top: 1px solid #e5e7eb; }
-                                .button { display: inline-block; padding: 10px 20px; background-color: #10B981; color: white; text-decoration: none; border-radius: 5px; margin-top: 20px; font-weight: bold; }
+                                body { margin: 0; padding: 0; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; background-color: #f3f4f6; color: #374151; }
+                                .container { max-width: 600px; margin: 40px auto; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05); }
+                                .header { background: linear-gradient(135deg, #10B981 0%%, #047857 100%%); color: white; padding: 30px 0; text-align: center; }
+                                .header h1 { margin: 0; font-size: 28px; font-weight: 800; letter-spacing: -0.5px; }
+                                .content { padding: 40px 30px; line-height: 1.7; font-size: 16px; }
+                                .footer { background-color: #f9fafb; padding: 30px; text-align: center; color: #9ca3af; font-size: 13px; border-top: 1px solid #e5e7eb; }
+                                .footer p { margin: 5px 0; }
                                 @media only screen and (max-width: 600px) {
-                                    .container { width: 100%% !important; border-radius: 0; }
+                                    .container { width: 100%% !important; margin: 0 !important; border-radius: 0; }
+                                    .content { padding: 20px; }
                                 }
                             </style>
                         </head>
                         <body>
-                            <div style="padding: 20px;">
-                                <div class="container">
-                                    <div class="header">
-                                        <h1>🩺 HealSync</h1>
-                                    </div>
-                                    <div class="content">
-                                        <h2 style="color: #111827; margin-top: 0; font-size: 20px;">%s</h2>
-                                        %s
-                                    </div>
-                                    <div class="footer">
-                                        <p>&copy; 2026 HealSync Healthcare Platform. All rights reserved.</p>
-                                        <p>This is an automated message. Please do not reply directly to this email.</p>
-                                    </div>
+                            <div class="container">
+                                <div class="header">
+                                    <h1>🩺 HealSync</h1>
+                                </div>
+                                <div class="content">
+                                    <!-- Dynamic Body -->
+                                    %s
+                                </div>
+                                <div class="footer">
+                                    <p>&copy; 2026 HealSync Healthcare Platform. All rights reserved.</p>
+                                    <div style="width: 40px; height: 2px; background-color: #e5e7eb; margin: 15px auto;"></div>
+                                    <p>This is an automated email — please do not reply.</p>
                                 </div>
                             </div>
                         </body>
                         </html>
                         """,
-                title, title, bodyContent);
+                title, bodyContent);
     }
 
     private String formatDateTime(String dateTimeStr) {
