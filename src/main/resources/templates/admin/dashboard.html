@@ -161,13 +161,7 @@
 </head>
 
 <body>
-    <div class="navbar">
-        <h1>🏥 HealSync Admin</h1>
-        <div class="user-info">
-            <span id="userEmail"></span>
-            <button class="btn-logout" onclick="logout()">Logout</button>
-        </div>
-    </div>
+    <th:block th:replace="fragments/admin-header :: adminHeader"></th:block>
 
     <div class="container">
         <div id="loadingState" class="loading">
@@ -200,6 +194,9 @@
                 <div class="actions">
                     <button class="btn btn-primary" onclick="window.location.href='/admin/create-doctor'">
                         ➕ Create Doctor
+                    </button>
+                    <button class="btn btn-primary" onclick="window.location.href='/admin/manage-doctors'">
+                        👉 Manage Doctors
                     </button>
                     <button class="btn btn-primary" onclick="window.location.href='/admin/appointments'">
                         📅 View Appointments

@@ -37,6 +37,11 @@ public class WebController {
         return "admin/create-doctor";
     }
 
+    @GetMapping("/admin/manage-doctors")
+    public String manageDoctors() {
+        return "admin/manage-doctors";
+    }
+
     @GetMapping("/admin/appointments")
     public String adminAppointments() {
         return "admin/appointments";

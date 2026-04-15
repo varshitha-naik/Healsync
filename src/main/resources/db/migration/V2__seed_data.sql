@@ -73,3 +73,4 @@ INSERT INTO prescription_items (prescription_id, medicine_name, dosage, frequenc
 INSERT INTO notifications (user_id, type, subject, message, is_read, created_at) VALUES
 (4, 'EMAIL', 'Appointment Confirmed', 'Your appointment with Dr. Emily Smith on Feb 5, 2024 at 10:00 AM has been confirmed.', FALSE, NOW()),
 (5, 'EMAIL', 'Appointment Requested', 'Your appointment request with Dr. Michael Johnson on Feb 6, 2024 at 2:00 PM is pending confirmation.', FALSE, NOW());
+                                                                                       
