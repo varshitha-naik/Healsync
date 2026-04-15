@@ -14,4 +14,5 @@ public class DoctorSummaryDTO {
     private String name;
     private String specialization;
     private String email;
+    private String profilePhotoUrl;
 }

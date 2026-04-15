@@ -93,6 +93,32 @@
             padding: 2rem;
             color: #718096;
         }
+
+        .doctor-cell {
+            display: flex;
+            align-items: center;
+            gap: 0.9rem;
+        }
+
+        .doctor-photo {
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 2px solid #e2e8f0;
+            background: #f8fafc;
+            flex-shrink: 0;
+        }
+
+        .doctor-details {
+            display: flex;
+            flex-direction: column;
+            gap: 0.2rem;
+        }
+
+        .doctor-details small {
+            color: #718096;
+        }
     </style>
 </head>
 
@@ -112,7 +138,7 @@
             <table id="doctorsTable" style="display: none;">
                 <thead>
                     <tr>
-                        <th>Doctor Name</th>
+                        <th>Doctor</th>
                         <th>Specialization</th>
                         <th>Email</th>
                         <th>Action</th>
@@ -160,9 +186,17 @@
             doctors.forEach(d => {
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
-                    <td>${d.name || 'Unknown'}</td>
-                    <td>${d.specialization || 'General'}</td>
-                    <td>${d.email}</td>
+                    <td>
+                        <div class="doctor-cell">
+                            <img class="doctor-photo" src="${escapeHtml(getDoctorPhotoUrl(d.profilePhotoUrl))}" alt="${escapeHtml(d.name || 'Doctor')}" onerror="handleDoctorImageError(this)">
+                            <div class="doctor-details">
+                                <strong>${escapeHtml(d.name || 'Unknown')}</strong>
+                                <small>Doctor ID: ${d.doctorId}</small>
+                            </div>
+                        </div>
+                    </td>
+                    <td>${escapeHtml(d.specialization || 'General')}</td>
+                    <td>${escapeHtml(d.email || '-')}</td>
                     <td><a href="/patient/appointments?doctorId=${d.doctorId}" class="btn-book">Book Appointment</a></td>
                 `;
                 tbody.appendChild(tr);
@@ -176,6 +210,33 @@
                 (d.specialization && d.specialization.toLowerCase().includes(query))
             );
             renderDoctors(filtered);
+        }
+
+        function getDoctorPhotoUrl(photoUrl) {
+            if (!photoUrl || !photoUrl.trim()) {
+                return '/images/default-doctor.svg';
+            }
+
+            return photoUrl.trim();
+        }
+
+        function handleDoctorImageError(img) {
+            if (img.dataset.fallbackApplied === 'true') {
+                return;
+            }
+
+            img.dataset.fallbackApplied = 'true';
+            img.src = '/images/default-doctor.svg';
+        }
+
+        function escapeHtml(unsafe) {
+            if (!unsafe) return '';
+            return unsafe
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
         }
 
         window.onload = loadDoctors;

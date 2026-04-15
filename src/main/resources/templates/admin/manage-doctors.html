@@ -301,6 +301,32 @@
             background: #fed7d7;
             color: #822727;
         }
+
+        .doctor-cell {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .doctor-photo {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 2px solid #e2e8f0;
+            background: #f8fafc;
+            flex-shrink: 0;
+        }
+
+        .doctor-meta {
+            display: flex;
+            flex-direction: column;
+            gap: 0.15rem;
+        }
+
+        .doctor-meta small {
+            color: #718096;
+        }
     </style>
 </head>
 
@@ -324,7 +350,7 @@
                 <table id="doctorsTable">
                     <thead>
                         <tr>
-                            <th>Full Name</th>
+                            <th>Doctor</th>
                             <th>Specialization</th>
                             <th>Email</th>
                             <th>Experience</th>
@@ -450,7 +476,15 @@
                 const statusText = doc.status === 'ACTIVE' ? 'Active' : 'Inactive';
 
                 tr.innerHTML = `
-                    <td>${escapeHtml(doc.fullName)}</td>
+                    <td>
+                        <div class="doctor-cell">
+                            <img class="doctor-photo" src="${escapeHtml(getDoctorPhotoUrl(doc.profilePhotoUrl))}" alt="${escapeHtml(doc.fullName)}" onerror="handleDoctorImageError(this)">
+                            <div class="doctor-meta">
+                                <strong>${escapeHtml(doc.fullName)}</strong>
+                                <small>ID: ${doc.id}</small>
+                            </div>
+                        </div>
+                    </td>
                     <td>${escapeHtml(doc.specialization)}</td>
                     <td>${escapeHtml(doc.email)}</td>
                     <td>${doc.experienceYears} yrs</td>
@@ -591,6 +625,23 @@
                 toast.style.opacity = '0';
                 setTimeout(() => toast.remove(), 300);
             }, 3000);
+        }
+
+        function getDoctorPhotoUrl(photoUrl) {
+            if (!photoUrl || !photoUrl.trim()) {
+                return '/images/default-doctor.svg';
+            }
+
+            return photoUrl.trim();
+        }
+
+        function handleDoctorImageError(img) {
+            if (img.dataset.fallbackApplied === 'true') {
+                return;
+            }
+
+            img.dataset.fallbackApplied = 'true';
+            img.src = '/images/default-doctor.svg';
         }
 
         // Helper to prevent XSS

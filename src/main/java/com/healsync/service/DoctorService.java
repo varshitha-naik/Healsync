@@ -5,6 +5,7 @@ import com.healsync.entity.DoctorAvailability;
 import com.healsync.entity.PatientProfile;
 import com.healsync.entity.User;
 import com.healsync.dto.AdminDoctorDTO;
+import com.healsync.dto.DoctorSummaryDTO;
 import com.healsync.dto.UpdateDoctorRequest;
 import com.healsync.entity.Clinic;
 import com.healsync.entity.DoctorProfile;
@@ -32,6 +33,7 @@ public class DoctorService {
     private final DoctorAvailabilityRepository doctorAvailabilityRepository;
     private final DoctorProfileRepository doctorProfileRepository;
     private final ClinicRepository clinicRepository;
+    private final FileStorageService fileStorageService;
 
     public List<AdminDoctorDTO> getAllDoctorsAdmin() {
         List<AdminDoctorDTO> result = new ArrayList<>();
@@ -45,18 +47,21 @@ public class DoctorService {
             String clinicName = clinicRepository.findById(profile.getClinicId())
                     .map(Clinic::getName).orElse("Unknown");
 
-            result.add(AdminDoctorDTO.builder()
-                    .id(user.getId())
-                    .fullName(profile.getFullName())
-                    .specialization(profile.getSpecialization())
-                    .email(user.getEmail())
-                    .experienceYears(profile.getExperienceYears())
-                    .clinicName(clinicName)
-                    .bio(profile.getBio())
-                    .status(user.getStatus().name())
-                    .build());
+            result.add(buildAdminDoctorDTO(profile, user, clinicName));
         }
         return result;
+    }
+
+    public List<DoctorSummaryDTO> getAllDoctorsForPatient() {
+        List<User> doctors = userRepository.findByRole(UserRole.DOCTOR);
+        List<DoctorSummaryDTO> dtos = new ArrayList<>();
+
+        for (User user : doctors) {
+            Optional<DoctorProfile> profileOpt = doctorProfileRepository.findByUserId(user.getId());
+            dtos.add(buildDoctorSummaryDTO(user, profileOpt.orElse(null)));
+        }
+
+        return dtos;
     }
 
     public void updateDoctorAdmin(Long userId, UpdateDoctorRequest request) {
@@ -121,5 +126,45 @@ public class DoctorService {
 
     public void deleteAvailability(Long id) {
         doctorAvailabilityRepository.deleteById(id);
+    }
+
+    public String resolveDoctorPhotoUrl(DoctorProfile profile) {
+        if (profile == null) {
+            return null;
+        }
+
+        return fileStorageService.withCacheBusting(profile.getProfilePhotoUrl(), profile.getUpdatedAt());
+    }
+
+    private AdminDoctorDTO buildAdminDoctorDTO(DoctorProfile profile, User user, String clinicName) {
+        return AdminDoctorDTO.builder()
+                .id(user.getId())
+                .fullName(profile.getFullName())
+                .specialization(profile.getSpecialization())
+                .email(user != null ? user.getEmail() : null)
+                .profilePhotoUrl(resolveDoctorPhotoUrl(profile))
+                .experienceYears(profile.getExperienceYears())
+                .clinicName(clinicName)
+                .bio(profile.getBio())
+                .status(user != null && user.getStatus() != null ? user.getStatus().name() : null)
+                .build();
+    }
+
+    private DoctorSummaryDTO buildDoctorSummaryDTO(User user, DoctorProfile profile) {
+        DoctorSummaryDTO dto = new DoctorSummaryDTO();
+        dto.setDoctorId(user.getId());
+        dto.setEmail(user.getEmail());
+
+        if (profile != null) {
+            dto.setName(profile.getFullName());
+            dto.setSpecialization(profile.getSpecialization());
+            dto.setProfilePhotoUrl(resolveDoctorPhotoUrl(profile));
+        } else {
+            dto.setName("Unknown Doctor");
+            dto.setSpecialization("General");
+            dto.setProfilePhotoUrl(null);
+        }
+
+        return dto;
     }
 }

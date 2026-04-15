@@ -9,11 +9,12 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
-import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.UUID;
 
 @Service
@@ -58,6 +59,42 @@ public class FileStorageService {
         } catch (IOException ex) {
             throw new RuntimeException("Could not store file " + originalFileName + ". Please try again!", ex);
         }
+    }
+
+    public String resolveAccessibleFileUrl(String fileUrl) {
+        if (fileUrl == null || fileUrl.isBlank()) {
+            return null;
+        }
+
+        String normalizedUrl = fileUrl.trim();
+        if (!normalizedUrl.startsWith("/uploads/")) {
+            return null;
+        }
+
+        String fileName = normalizedUrl.substring("/uploads/".length());
+        if (fileName.isBlank()) {
+            return null;
+        }
+
+        Path filePath = this.fileStorageLocation.resolve(fileName).normalize();
+        if (!filePath.startsWith(this.fileStorageLocation)) {
+            return null;
+        }
+
+        return Files.exists(filePath) ? normalizedUrl : null;
+    }
+
+    public String withCacheBusting(String fileUrl, LocalDateTime updatedAt) {
+        String accessibleUrl = resolveAccessibleFileUrl(fileUrl);
+        if (accessibleUrl == null) {
+            return null;
+        }
+
+        long version = updatedAt != null
+                ? updatedAt.toInstant(ZoneOffset.UTC).toEpochMilli()
+                : System.currentTimeMillis();
+
+        return accessibleUrl + "?v=" + version;
     }
 
     public Resource loadFileAsResource(String fileName) {

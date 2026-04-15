@@ -4,6 +4,7 @@ import com.healsync.entity.Appointment;
 import com.healsync.entity.DoctorProfile;
 import com.healsync.entity.PatientProfile;
 import com.healsync.enums.AppointmentStatus;
+import com.healsync.enums.UserRole;
 import com.healsync.repository.AppointmentRepository;
 import com.healsync.repository.DoctorProfileRepository;
 import com.healsync.repository.PatientProfileRepository;
@@ -14,6 +15,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 
@@ -134,7 +136,7 @@ public class AppointmentService {
             return List.of(); // or throw exception
         }
 
-        List<Appointment> appointments = appointmentRepository.findByDoctorId(profileId);
+        List<Appointment> appointments = new ArrayList<>(appointmentRepository.findByDoctorId(profileId));
         appointments.sort(Comparator.comparing(Appointment::getStartDateTime));
         populateNames(appointments);
         return appointments;
@@ -150,7 +152,7 @@ public class AppointmentService {
             return List.of();
         }
 
-        List<Appointment> appointments = appointmentRepository.findByDoctorIdAndStatus(profileId, status);
+        List<Appointment> appointments = new ArrayList<>(appointmentRepository.findByDoctorIdAndStatus(profileId, status));
         appointments.sort(Comparator.comparing(Appointment::getStartDateTime));
         populateNames(appointments);
         return appointments;
@@ -158,15 +160,13 @@ public class AppointmentService {
 
     public List<Appointment> getAppointmentsByPatient(Long patientId) {
         // patientId argument is actually the User ID. Resolve Profile ID first.
-        Long profileId = patientProfileRepository.findByUserId(patientId)
-                .map(PatientProfile::getId)
-                .orElse(null);
+        Long profileId = resolvePatientProfileIdFromUserId(patientId);
 
         if (profileId == null) {
             return List.of();
         }
 
-        List<Appointment> appointments = appointmentRepository.findByPatientId(profileId);
+        List<Appointment> appointments = new ArrayList<>(appointmentRepository.findByPatientId(profileId));
         appointments.sort(Comparator.comparing(Appointment::getStartDateTime));
         populateNames(appointments);
         return appointments;
@@ -174,18 +174,24 @@ public class AppointmentService {
 
     public List<Appointment> getAppointmentsByPatientAndStatus(Long patientId, AppointmentStatus status) {
         // patientId argument is actually the User ID. Resolve Profile ID first.
-        Long profileId = patientProfileRepository.findByUserId(patientId)
-                .map(PatientProfile::getId)
-                .orElse(null);
+        Long profileId = resolvePatientProfileIdFromUserId(patientId);
 
         if (profileId == null) {
             return List.of();
         }
 
-        List<Appointment> appointments = appointmentRepository.findByPatientIdAndStatus(profileId, status);
+        List<Appointment> appointments = new ArrayList<>(appointmentRepository.findByPatientIdAndStatus(profileId, status));
         appointments.sort(Comparator.comparing(Appointment::getStartDateTime));
         populateNames(appointments);
         return appointments;
+    }
+
+    public List<Appointment> getCompletedAppointmentsByPatientUserId(Long userId) {
+        return getAppointmentsByPatientAndStatus(userId, AppointmentStatus.COMPLETED);
+    }
+
+    public boolean isValidPatientUserId(Long userId) {
+        return resolvePatientProfileIdFromUserId(userId) != null;
     }
 
     @Transactional
@@ -306,5 +312,23 @@ public class AppointmentService {
         if (appointments != null) {
             appointments.forEach(this::populateNames);
         }
+    }
+
+    private Long resolvePatientProfileIdFromUserId(Long userId) {
+        if (userId == null) {
+            return null;
+        }
+
+        boolean isPatientUser = userRepository.findById(userId)
+                .map(user -> user.getRole() == UserRole.PATIENT)
+                .orElse(false);
+
+        if (!isPatientUser) {
+            return null;
+        }
+
+        return patientProfileRepository.findByUserId(userId)
+                .map(PatientProfile::getId)
+                .orElse(null);
     }
 }

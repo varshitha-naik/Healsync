@@ -146,8 +146,8 @@
     <div class="container">
         <div class="card">
             <div class="profile-img-container">
-                <img id="profileImg" src="/images/default-doctor.png" alt="Doctor Profile" class="profile-img"
-                    onerror="this.src='https://via.placeholder.com/150?text=Dr'">
+                <img id="profileImg" src="/images/default-doctor.svg" alt="Doctor Profile" class="profile-img"
+                    onerror="handleDoctorImageError(this)">
             </div>
 
             <h2 id="docName">Loading...</h2>
@@ -195,6 +195,8 @@
             loadProfile();
         });
 
+        const DEFAULT_DOCTOR_IMAGE = '/images/default-doctor.svg';
+
         async function loadProfile() {
             const token = localStorage.getItem('jwtToken');
             const doctorId = getUserIdFromToken(token); // Or from localStorage if you stored it separately
@@ -227,9 +229,7 @@
                 document.getElementById('docExp').innerText = profile.experienceYears + " Years";
                 document.getElementById('docClinic').innerText = profile.clinicId;
 
-                if (profile.profilePhotoUrl) {
-                    document.getElementById('profileImg').src = profile.profilePhotoUrl;
-                }
+                document.getElementById('profileImg').src = getDoctorPhotoUrl(profile.profilePhotoUrl);
 
             } catch (error) {
                 console.error(error);
@@ -269,7 +269,7 @@
                 const result = await response.json();
 
                 // Update Image immediately
-                document.getElementById('profileImg').src = result.url;
+                document.getElementById('profileImg').src = getDoctorPhotoUrl(result.url);
 
                 msgDiv.innerText = "Profile photo updated successfully!";
                 msgDiv.className = "message success";
@@ -287,6 +287,23 @@
             // Assuming Login stores 'userId' in localStorage.
             // Let's check Login flow.
             return localStorage.getItem('userId');
+        }
+
+        function getDoctorPhotoUrl(photoUrl) {
+            if (!photoUrl || !photoUrl.trim()) {
+                return DEFAULT_DOCTOR_IMAGE;
+            }
+
+            return photoUrl.trim();
+        }
+
+        function handleDoctorImageError(img) {
+            if (img.dataset.fallbackApplied === 'true') {
+                return;
+            }
+
+            img.dataset.fallbackApplied = 'true';
+            img.src = DEFAULT_DOCTOR_IMAGE;
         }
 
         // Helper if userId not in local storage, try decoding token (basic middle part decode)

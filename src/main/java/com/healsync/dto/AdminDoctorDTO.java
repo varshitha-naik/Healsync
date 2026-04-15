@@ -14,6 +14,7 @@ public class AdminDoctorDTO {
     private String fullName;
     private String specialization;
     private String email;
+    private String profilePhotoUrl;
     private Integer experienceYears;
     private String clinicName;
     private String bio;

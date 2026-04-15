@@ -132,6 +132,8 @@
 
                 let history = await res.json();
 
+                history = history.filter(item => item.status === 'COMPLETED');
+
                 // Sort by date desc
                 history.sort((a, b) => new Date(b.startDateTime) - new Date(a.startDateTime));
 
@@ -150,7 +152,7 @@
             tbody.innerHTML = '';
 
             if (history.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">No history found.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">No completed appointments in your medical history yet.</td></tr>';
                 return;
             }
 

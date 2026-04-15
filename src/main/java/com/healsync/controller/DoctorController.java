@@ -8,6 +8,7 @@ import com.healsync.repository.DoctorProfileRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.multipart.MultipartFile;
 import com.healsync.entity.DoctorProfile;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -63,15 +64,32 @@ public class DoctorController {
                 .orElseThrow(() -> new RuntimeException("Doctor profile not found"));
 
         profile.setProfilePhotoUrl(fileUrl);
-        doctorProfileRepository.save(profile);
+        DoctorProfile savedProfile = doctorProfileRepository.save(profile);
 
-        return ResponseEntity.ok(Map.of("message", "Profile photo updated", "url", fileUrl));
+        return ResponseEntity.ok(Map.of(
+                "message", "Profile photo updated",
+                "url", fileStorageService.withCacheBusting(savedProfile.getProfilePhotoUrl(), savedProfile.getUpdatedAt())));
     }
 
     @GetMapping("/{doctorId}/profile")
     public ResponseEntity<?> getProfile(@PathVariable Long doctorId) {
         DoctorProfile profile = doctorProfileRepository.findByUserId(doctorId)
                 .orElseThrow(() -> new RuntimeException("Doctor profile not found"));
-        return ResponseEntity.ok(profile);
+
+        Map<String, Object> response = new LinkedHashMap<>();
+        response.put("id", profile.getId());
+        response.put("userId", profile.getUserId());
+        response.put("clinicId", profile.getClinicId());
+        response.put("fullName", profile.getFullName());
+        response.put("specialization", profile.getSpecialization());
+        response.put("licenseNumber", profile.getLicenseNumber());
+        response.put("experienceYears", profile.getExperienceYears());
+        response.put("bio", profile.getBio());
+        response.put("profilePhotoUrl",
+                fileStorageService.withCacheBusting(profile.getProfilePhotoUrl(), profile.getUpdatedAt()));
+        response.put("createdAt", profile.getCreatedAt());
+        response.put("updatedAt", profile.getUpdatedAt());
+
+        return ResponseEntity.ok(response);
     }
 }
