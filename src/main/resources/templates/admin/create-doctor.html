@@ -1,280 +1,104 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org">
 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Create Doctor - HealSync Admin</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            font-family: 'Inter', -apple-system, sans-serif;
-            background: #f5f7fa;
-            color: #2d3748;
-        }
-
-        .navbar {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 1rem 2rem;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-        }
-
-        .navbar h1 {
-            font-size: 1.5rem;
-            font-weight: 700;
-        }
-
-        .nav-links {
-            display: flex;
-            gap: 1rem;
-            align-items: center;
-        }
-
-        .nav-link {
-            color: white;
-            text-decoration: none;
-            padding: 0.5rem 1rem;
-            border-radius: 8px;
-            transition: background 0.3s;
-        }
-
-        .nav-link:hover {
-            background: rgba(255, 255, 255, 0.2);
-        }
-
-        .container {
-            max-width: 800px;
-            margin: 2rem auto;
-            padding: 0 2rem;
-        }
-
-        .header {
-            margin-bottom: 2rem;
-        }
-
-        .header h2 {
-            font-size: 2rem;
-            color: #2d3748;
-            margin-bottom: 0.5rem;
-        }
-
-        .header p {
-            color: #718096;
-        }
-
-        .form-card {
-            background: white;
-            border-radius: 16px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-            padding: 2rem;
-        }
-
-        .form-section {
-            margin-bottom: 2rem;
-        }
-
-        .form-section h3 {
-            font-size: 1.125rem;
-            color: #4a5568;
-            margin-bottom: 1rem;
-            padding-bottom: 0.5rem;
-            border-bottom: 2px solid #e2e8f0;
-        }
-
-        .form-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 1.5rem;
-        }
-
-        .form-group {
-            display: flex;
-            flex-direction: column;
-        }
-
-        .form-group.full-width {
-            grid-column: 1 / -1;
-        }
-
-        label {
-            font-size: 0.875rem;
-            font-weight: 600;
-            color: #4a5568;
-            margin-bottom: 0.5rem;
-        }
-
-        label .required {
-            color: #e53e3e;
-        }
-
-        input,
-        select,
-        textarea {
-            padding: 0.75rem;
-            border: 2px solid #e2e8f0;
-            border-radius: 8px;
-            font-size: 0.875rem;
-            font-family: inherit;
-            transition: border-color 0.3s;
-        }
-
-        input:focus,
-        select:focus,
-        textarea:focus {
-            outline: none;
-            border-color: #667eea;
-        }
-
-        textarea {
-            resize: vertical;
-            min-height: 100px;
-        }
-
-        .btn-group {
-            display: flex;
-            gap: 1rem;
-            margin-top: 2rem;
-        }
-
-        .btn {
-            padding: 0.875rem 2rem;
-            border: none;
-            border-radius: 8px;
-            font-weight: 600;
-            font-size: 0.875rem;
-            cursor: pointer;
-            transition: all 0.3s;
-        }
-
-        .btn-primary {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            flex: 1;
-        }
-
-        .btn-primary:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 16px rgba(102, 126, 234, 0.3);
-        }
-
-        .btn-secondary {
-            background: #e2e8f0;
-            color: #4a5568;
-        }
-
-        .btn-secondary:hover {
-            background: #cbd5e0;
-        }
-
-        .alert {
-            padding: 1rem;
-            border-radius: 8px;
-            margin-bottom: 1.5rem;
-            font-size: 0.875rem;
-        }
-
-        .alert-success {
-            background: #d1fae5;
-            color: #065f46;
-            border: 1px solid #6ee7b7;
-        }
-
-        .alert-error {
-            background: #fee2e2;
-            color: #991b1b;
-            border: 1px solid #fca5a5;
-        }
-    </style>
+    <link rel="stylesheet" th:href="@{/css/design-system.css}" href="/css/design-system.css">
 </head>
 
 <body>
-    <th:block th:replace="fragments/admin-header :: adminHeader"></th:block>
-
-    <div class="container">
-        <div class="header">
-            <h2>➕ Create Doctor</h2>
-            <p>Add a new doctor to the HealSync platform</p>
-        </div>
-
-        <div id="message"></div>
-
-        <div class="form-card">
-            <form id="createDoctorForm">
-                <div class="form-section">
-                    <h3>Account Information</h3>
-                    <div class="form-grid">
-                        <div class="form-group">
-                            <label>Email <span class="required">*</span></label>
-                            <input type="email" name="email" required placeholder="doctor@example.com">
-                        </div>
-                        <div class="form-group">
-                            <label>Password <span class="required">*</span></label>
-                            <input type="password" name="password" required placeholder="Minimum 6 characters"
-                                minlength="6">
-                        </div>
-                    </div>
+    <!-- /* Redesigned: Create Doctor â€” follows clinical design system v1 */ -->
+    <div class="app-shell">
+        <th:block th:replace="fragments/admin-header :: adminHeader"></th:block>
+        <div class="app-main">
+            <header class="topbar">
+                <div class="topbar-title-group">
+                    <p class="breadcrumb">Admin / Doctors</p>
+                    <h1>Create doctor account</h1>
                 </div>
-
-                <div class="form-section">
-                    <h3>Personal Information</h3>
-                    <div class="form-grid">
-                        <div class="form-group full-width">
-                            <label>Full Name <span class="required">*</span></label>
-                            <input type="text" name="fullName" required placeholder="Dr. John Smith">
-                        </div>
-                        <div class="form-group">
-                            <label>Specialization <span class="required">*</span></label>
-                            <select name="specialization" required>
-                                <option value="">Select Specialization</option>
-                                <option value="Cardiology">Cardiology</option>
-                                <option value="Dermatology">Dermatology</option>
-                                <option value="Neurology">Neurology</option>
-                                <option value="Pediatrics">Pediatrics</option>
-                                <option value="Orthopedics">Orthopedics</option>
-                                <option value="General Medicine">General Medicine</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label>License Number <span class="required">*</span></label>
-                            <input type="text" name="licenseNumber" required placeholder="MD-12345">
-                        </div>
-                        <div class="form-group">
-                            <label>Experience (Years) <span class="required">*</span></label>
-                            <input type="number" name="experienceYears" required min="0" placeholder="5">
-                        </div>
-                        <div class="form-group">
-                            <label>Clinic</label>
-                            <select name="clinicId" required>
-                                <option value="1">HealSync Medical Center</option>
-                            </select>
-                        </div>
-                        <div class="form-group full-width">
-                            <label>Bio</label>
-                            <textarea name="bio" placeholder="Brief professional biography..."></textarea>
-                        </div>
-                    </div>
+                <div class="topbar-actions">
+                    <button class="avatar-button" type="button"><span class="avatar-circle">AD</span></button>
                 </div>
+            </header>
 
-                <div class="btn-group">
-                    <button type="button" class="btn btn-secondary"
-                        onclick="window.location.href='/admin/dashboard'">Cancel</button>
-                    <button type="submit" class="btn btn-primary">Create Doctor</button>
+            <main class="page-content">
+                <div class="page-columns">
+                    <section class="card">
+                        <div class="section-header">
+                            <div>
+                                <h2>Clinician details</h2>
+                                <p class="section-copy">Provision a new doctor and connect them to the clinic roster.</p>
+                            </div>
+                        </div>
+                        <div id="message"></div>
+                        <form id="createDoctorForm" class="page-stack">
+                            <div class="form-grid">
+                                <div class="field">
+                                    <label>Email</label>
+                                    <input type="email" name="email" required placeholder="doctor@example.com">
+                                </div>
+                                <div class="field">
+                                    <label>Password</label>
+                                    <input type="password" name="password" required minlength="6" placeholder="Minimum 6 characters">
+                                </div>
+                                <div class="field full">
+                                    <label>Full name</label>
+                                    <input type="text" name="fullName" required placeholder="Dr. John Smith">
+                                </div>
+                                <div class="field">
+                                    <label>Specialization</label>
+                                    <select name="specialization" required>
+                                        <option value="">Select specialization</option>
+                                        <option value="Cardiology">Cardiology</option>
+                                        <option value="Dermatology">Dermatology</option>
+                                        <option value="Neurology">Neurology</option>
+                                        <option value="Pediatrics">Pediatrics</option>
+                                        <option value="Orthopedics">Orthopedics</option>
+                                        <option value="General Medicine">General Medicine</option>
+                                    </select>
+                                </div>
+                                <div class="field">
+                                    <label>License number</label>
+                                    <input type="text" name="licenseNumber" required placeholder="MD-12345">
+                                </div>
+                                <div class="field">
+                                    <label>Experience (years)</label>
+                                    <input type="number" name="experienceYears" required min="0" placeholder="5">
+                                </div>
+                                <div class="field">
+                                    <label>Clinic</label>
+                                    <select name="clinicId" required>
+                                        <option value="1">HealSync Medical Center</option>
+                                    </select>
+                                </div>
+                                <div class="field full">
+                                    <label>Bio</label>
+                                    <textarea name="bio" placeholder="Brief professional biography"></textarea>
+                                </div>
+                            </div>
+                            <div class="horizontal-actions">
+                                <button type="button" class="btn-secondary" onclick="window.location.href='/admin/dashboard'">Cancel</button>
+                                <button type="submit" class="btn-primary">Create Doctor</button>
+                            </div>
+                        </form>
+                    </section>
+
+                    <aside class="card">
+                        <h2>What happens next</h2>
+                        <div class="history-list">
+                            <div class="detail-card"><label>Account access</label><span>The doctor receives a role-bound login.</span></div>
+                            <div class="detail-card"><label>Directory listing</label><span>The new clinician appears in admin doctor management.</span></div>
+                            <div class="detail-card"><label>Profile completion</label><span>Photo and availability can be added after setup.</span></div>
+                        </div>
+                    </aside>
                 </div>
-            </form>
+            </main>
         </div>
     </div>
 
     <script>
-        // Check authentication
         const token = localStorage.getItem('jwtToken');
         const userEmail = localStorage.getItem('userEmail');
         const userRole = localStorage.getItem('userRole');
@@ -285,7 +109,6 @@
 
         document.getElementById('userEmail').textContent = userEmail || 'Admin';
 
-        // Handle form submission
         document.getElementById('createDoctorForm').addEventListener('submit', async (e) => {
             e.preventDefault();
 
@@ -314,7 +137,7 @@
                 if (response.ok) {
                     document.getElementById('message').innerHTML = `
                         <div class="alert alert-success">
-                            ✅ Doctor created successfully!<br>
+                            Doctor created successfully.<br>
                             <strong>Email:</strong> ${data.email}<br>
                             <strong>Name:</strong> ${data.fullName}<br>
                             Redirecting to dashboard...
@@ -326,14 +149,15 @@
                     }, 2000);
                 } else {
                     const errText = await response.text();
-                    document.getElementById('message').innerHTML = `<div class="alert alert-error">Failed: ${errText}</div>`;
+                    document.getElementById('message').innerHTML = `<div class="alert alert-danger">Failed: ${errText}</div>`;
                 }
             } catch (error) {
                 console.error('Error:', error);
-                document.getElementById('message').innerHTML = `<div class="alert alert-error">Check console for error</div>`;
+                document.getElementById('message').innerHTML = `<div class="alert alert-danger">Check console for error</div>`;
             }
         });
     </script>
 </body>
 
 </html>
+

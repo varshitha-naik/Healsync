@@ -1,90 +1,74 @@
-<!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org">
+<aside th:fragment="header" class="app-sidebar">
+    <div class="sidebar-brand">
+        <div class="sidebar-brand-mark">HS</div>
+        <div class="sidebar-brand-text">
+            <h1>HealSync</h1>
+            <p>Patient portal</p>
+        </div>
+    </div>
 
-<body>
-    <div th:fragment="header">
-        <style>
-            .navbar {
-                background: linear-gradient(135deg, #3B82F6 0%, #2563EB 100%);
-                color: white;
-                padding: 1rem 2rem;
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-                box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-            }
+    <nav class="sidebar-nav">
+        <a href="/patient/dashboard" class="sidebar-link" data-match="/patient/dashboard">
+            <svg viewBox="0 0 24 24"><path d="M4 11.5 12 4l8 7.5"/><path d="M6 10v10h12V10"/></svg>
+            <span>Home</span>
+        </a>
+        <a href="/patient/appointments" class="sidebar-link" data-match="/patient/appointments,/appointments">
+            <svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M8 3v4M16 3v4M4 10h16"/></svg>
+            <span>My Appointments</span>
+        </a>
+        <a href="/patient/find-doctor" class="sidebar-link" data-match="/patient/find-doctor">
+            <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6"/><path d="m20 20-4.2-4.2"/></svg>
+            <span>Book Appointment</span>
+        </a>
+        <a href="/patient/medical-history" class="sidebar-link" data-match="/patient/medical-history">
+            <svg viewBox="0 0 24 24"><path d="M7 4h10l3 3v13H7z"/><path d="M17 4v3h3"/><path d="M10 12h7M10 16h5"/></svg>
+            <span>My Records</span>
+        </a>
+        <a href="/profile" class="sidebar-link" data-match="/profile">
+            <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M5 20a7 7 0 0 1 14 0"/></svg>
+            <span>Profile</span>
+        </a>
+    </nav>
 
-            .navbar h1 {
-                font-size: 1.5rem;
-                font-weight: 700;
-                cursor: pointer;
-            }
-
-            .nav-links {
-                display: flex;
-                gap: 1rem;
-                align-items: center;
-            }
-
-            .nav-link {
-                color: white;
-                text-decoration: none;
-                padding: 0.5rem 1rem;
-                border-radius: 8px;
-                transition: background 0.3s;
-                font-weight: 500;
-            }
-
-            .nav-link:hover {
-                background: rgba(255, 255, 255, 0.2);
-            }
-
-            .user-info {
-                display: flex;
-                align-items: center;
-                gap: 1rem;
-            }
-
-            .btn-logout {
-                background: rgba(255, 255, 255, 0.2);
-                border: 1px solid rgba(255, 255, 255, 0.3);
-                color: white;
-                padding: 0.5rem 1rem;
-                border-radius: 8px;
-                cursor: pointer;
-                transition: all 0.3s;
-            }
-
-            .btn-logout:hover {
-                background: rgba(255, 255, 255, 0.3);
-            }
-        </style>
-        <div class="navbar">
-            <h1 onclick="window.location.href='/patient/dashboard'">👤 HealSync Patient</h1>
-            <div class="nav-links">
-                <a href="/patient/dashboard" class="nav-link">Dashboard</a>
-                <a href="/patient/appointments" class="nav-link">My Appointments</a>
-                <a href="/patient/find-doctor" class="nav-link">Find Doctor</a>
-                <a href="/patient/medical-history" class="nav-link">Medical History</a>
-            </div>
-            <div class="user-info">
-                <span id="navUserEmail"></span>
-                <button class="btn-logout" onclick="logout()">Logout</button>
+    <div class="sidebar-user">
+        <div class="user-summary">
+            <div class="avatar-circle" id="patientInitials">PT</div>
+            <div class="user-meta">
+                <p class="user-name">Patient account</p>
+                <p class="user-email" id="navUserEmail">patient@healsync.com</p>
             </div>
         </div>
-        <script>
-            document.addEventListener("DOMContentLoaded", () => {
-                const email = localStorage.getItem('userEmail');
-                const doc = document.getElementById('navUserEmail');
-                if (doc && email) doc.innerText = email;
-            });
-
-            function logout() {
-                localStorage.clear();
-                window.location.href = '/login';
-            }
-        </script>
+        <span class="role-badge">Patient</span>
+        <button class="btn-secondary" type="button" onclick="logout()">Logout</button>
     </div>
-</body>
 
-</html>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const email = localStorage.getItem('userEmail') || 'patient@healsync.com';
+            const emailNode = document.getElementById('navUserEmail');
+            const initialsNode = document.getElementById('patientInitials');
+            const path = window.location.pathname;
+
+            if (emailNode) {
+                emailNode.textContent = email;
+            }
+
+            if (initialsNode) {
+                const initials = email.split('@')[0].split(/[.\-_]/).map(part => part[0]).join('').slice(0, 2).toUpperCase();
+                initialsNode.textContent = initials || 'PT';
+            }
+
+            document.querySelectorAll('.sidebar-link').forEach(link => {
+                const matches = (link.dataset.match || '').split(',');
+                if (matches.some(match => match && path.startsWith(match))) {
+                    link.classList.add('is-active');
+                }
+            });
+        });
+
+        function logout() {
+            localStorage.clear();
+            window.location.href = '/login';
+        }
+    </script>
+</aside>

@@ -1,256 +1,161 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org">
 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin Dashboard - HealSync</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            font-family: 'Inter', -apple-system, sans-serif;
-            background: #f5f7fa;
-            color: #2d3748;
-        }
-
-        .navbar {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 1rem 2rem;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-        }
-
-        .navbar h1 {
-            font-size: 1.5rem;
-            font-weight: 700;
-        }
-
-        .user-info {
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-        }
-
-        .btn-logout {
-            background: rgba(255, 255, 255, 0.2);
-            border: 1px solid rgba(255, 255, 255, 0.3);
-            color: white;
-            padding: 0.5rem 1rem;
-            border-radius: 8px;
-            cursor: pointer;
-            transition: all 0.3s;
-        }
-
-        .btn-logout:hover {
-            background: rgba(255, 255, 255, 0.3);
-        }
-
-        .container {
-            max-width: 1200px;
-            margin: 2rem auto;
-            padding: 0 2rem;
-        }
-
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 1.5rem;
-            margin-bottom: 2rem;
-        }
-
-        .stat-card {
-            background: white;
-            border-radius: 16px;
-            padding: 1.5rem;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-            transition: transform 0.3s, box-shadow 0.3s;
-        }
-
-        .stat-card:hover {
-            transform: translateY(-4px);
-            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
-        }
-
-        .stat-card h3 {
-            font-size: 0.875rem;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-            color: #718096;
-            margin-bottom: 0.5rem;
-        }
-
-        .stat-card .value {
-            font-size: 2rem;
-            font-weight: 700;
-            color: #667eea;
-        }
-
-        .section {
-            background: white;
-            border-radius: 16px;
-            padding: 2rem;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-            margin-bottom: 2rem;
-        }
-
-        .section h2 {
-            font-size: 1.5rem;
-            margin-bottom: 1.5rem;
-            color: #2d3748;
-        }
-
-        .loading {
-            text-align: center;
-            padding: 3rem;
-            color: #718096;
-        }
-
-        .spinner {
-            border: 3px solid #f3f4f6;
-            border-top: 3px solid #667eea;
-            border-radius: 50%;
-            width: 40px;
-            height: 40px;
-            animation: spin 1s linear infinite;
-            margin: 0 auto 1rem;
-        }
-
-        @keyframes spin {
-            0% {
-                transform: rotate(0deg);
-            }
-
-            100% {
-                transform: rotate(360deg);
-            }
-        }
-
-        .actions {
-            display: flex;
-            gap: 1rem;
-            flex-wrap: wrap;
-        }
-
-        .btn {
-            padding: 0.75rem 1.5rem;
-            border: none;
-            border-radius: 8px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s;
-        }
-
-        .btn-primary {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-        }
-
-        .btn-primary:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 16px rgba(102, 126, 234, 0.3);
-        }
-    </style>
+    <link rel="stylesheet" th:href="@{/css/design-system.css}" href="/css/design-system.css">
 </head>
 
 <body>
-    <th:block th:replace="fragments/admin-header :: adminHeader"></th:block>
+    <!-- /* Redesigned: Admin Dashboard — follows clinical design system v1 */ -->
+    <div class="app-shell">
+        <th:block th:replace="fragments/admin-header :: adminHeader"></th:block>
 
-    <div class="container">
-        <div id="loadingState" class="loading">
-            <div class="spinner"></div>
-            <p>Loading dashboard...</p>
-        </div>
+        <div class="app-main">
+            <header class="topbar">
+                <div class="topbar-title-group">
+                    <p class="breadcrumb">Admin / Dashboard</p>
+                    <h1>Operational overview</h1>
+                </div>
+                <div class="topbar-actions">
+                    <button class="avatar-button" type="button" aria-label="Profile menu">
+                        <span class="avatar-circle">AD</span>
+                    </button>
+                </div>
+            </header>
 
-        <div id="dashboardContent" style="display: none;">
-            <div class="stats-grid">
-                <div class="stat-card">
-                    <h3>Total Doctors</h3>
-                    <div class="value" id="doctorCount">0</div>
+            <main class="page-content">
+                <div id="loadingState" class="card loading-block">
+                    <div class="skeleton-line" style="max-width: 240px;"></div>
+                    <div class="skeleton-line" style="max-width: 320px;"></div>
                 </div>
-                <div class="stat-card">
-                    <h3>Total Patients</h3>
-                    <div class="value" id="patientCount">0</div>
-                </div>
-                <div class="stat-card">
-                    <h3>Appointments Today</h3>
-                    <div class="value" id="appointmentCount">0</div>
-                </div>
-                <div class="stat-card">
-                    <h3>Active Users</h3>
-                    <div class="value" id="activeUserCount">0</div>
-                </div>
-            </div>
 
-            <div class="section">
-                <h2>Quick Actions</h2>
-                <div class="actions">
-                    <button class="btn btn-primary" onclick="window.location.href='/admin/create-doctor'">
-                        ➕ Create Doctor
-                    </button>
-                    <button class="btn btn-primary" onclick="window.location.href='/admin/manage-doctors'">
-                        👉 Manage Doctors
-                    </button>
-                    <button class="btn btn-primary" onclick="window.location.href='/admin/appointments'">
-                        📅 View Appointments
-                    </button>
-                    <button class="btn btn-primary" onclick="window.location.href='/admin/audit-logs'">
-                        📊 Audit Logs
-                    </button>
+                <div id="dashboardContent" class="page-stack" style="display: none;">
+                    <section class="banner">
+                        <h2>Today's clinic pulse</h2>
+                        <p>Track appointments, staffing, and system activity from one place.</p>
+                    </section>
+
+                    <section class="stats-grid">
+                        <article class="metric-card">
+                            <div class="metric-head"><span class="metric-icon"><svg viewBox="0 0 24 24"><path d="M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z"/><path d="M4 20a8 8 0 0 1 16 0"/></svg></span><span class="metric-trend up">On duty</span></div>
+                            <span class="metric-label">Doctors on platform</span>
+                            <span class="metric-value" id="doctorCount">0</span>
+                        </article>
+                        <article class="metric-card">
+                            <div class="metric-head"><span class="metric-icon"><svg viewBox="0 0 24 24"><path d="M16 19a4 4 0 0 0-8 0"/><circle cx="12" cy="9" r="3"/></svg></span><span class="metric-trend up">Growing</span></div>
+                            <span class="metric-label">Registered patients</span>
+                            <span class="metric-value" id="patientCount">0</span>
+                        </article>
+                        <article class="metric-card">
+                            <div class="metric-head"><span class="metric-icon"><svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16"/></svg></span><span class="metric-trend up">Today</span></div>
+                            <span class="metric-label">Appointments scheduled</span>
+                            <span class="metric-value" id="appointmentCount">0</span>
+                        </article>
+                        <article class="metric-card">
+                            <div class="metric-head"><span class="metric-icon"><svg viewBox="0 0 24 24"><path d="M4 19V5"/><path d="M10 19V9"/><path d="M16 19V13"/><path d="M22 19V7"/></svg></span><span class="metric-trend up">Live</span></div>
+                            <span class="metric-label">Completed today</span>
+                            <span class="metric-value" id="completedAppointmentsToday">0</span>
+                        </article>
+                        <article class="metric-card">
+                            <div class="metric-head"><span class="metric-icon"><svg viewBox="0 0 24 24"><path d="M3 12h18"/><path d="M12 3v18"/></svg></span><span class="metric-trend up">Coverage</span></div>
+                            <span class="metric-label">Doctors available today</span>
+                            <span class="metric-value" id="doctorsAvailableToday">0</span>
+                        </article>
+                    </section>
+
+                    <section class="page-columns">
+                        <section class="card">
+                            <div class="section-header">
+                                <div>
+                                    <h2>Quick actions</h2>
+                                    <p class="section-copy">Most-used workflows for daily operations.</p>
+                                </div>
+                            </div>
+                            <div class="action-card-grid">
+                                <a class="history-card action-card highlighted" href="/admin/create-doctor">
+                                    <h3>Create doctor account</h3>
+                                    <p>Provision a clinician with role and profile details.</p>
+                                </a>
+                                <a class="history-card action-card" href="/admin/manage-doctors">
+                                    <h3>Manage doctors</h3>
+                                    <p>Review availability, profile status, and directory quality.</p>
+                                </a>
+                                <a class="history-card action-card" href="/admin/appointments">
+                                    <h3>Review appointments</h3>
+                                    <p>Monitor today's bookings, pending actions, and cancellations.</p>
+                                </a>
+                                <a class="history-card action-card" href="/admin/audit-logs">
+                                    <h3>Audit activity</h3>
+                                    <p>Inspect recent operational events and changes.</p>
+                                </a>
+                            </div>
+                        </section>
+
+                        <section class="card">
+                            <div class="section-header">
+                                <div>
+                                    <h2>Coverage notes</h2>
+                                    <p class="section-copy">A simple snapshot to keep the team aligned.</p>
+                                </div>
+                            </div>
+                            <div class="list-stack">
+                                <div class="detail-card"><label>Appointments today</label><strong id="appointmentCountMirror">0 scheduled</strong></div>
+                                <div class="detail-card"><label>Completed today</label><strong id="completedCountMirror">0 completed</strong></div>
+                                <div class="detail-card"><label>Doctors staffed</label><strong id="doctorCountMirror">0 total</strong></div>
+                                <div class="detail-card"><label>Doctors available today</label><strong id="availableCountMirror">0 available</strong></div>
+                                <div class="detail-card"><label>Patient volume</label><strong id="patientCountMirror">0 active records</strong></div>
+                            </div>
+                        </section>
+                    </section>
                 </div>
-            </div>
+            </main>
         </div>
     </div>
 
     <script>
-        // Check JWT token on page load
         const token = localStorage.getItem('jwtToken');
         const userEmail = localStorage.getItem('userEmail');
         const userRole = localStorage.getItem('userRole');
 
         if (!token) {
-            console.log('No token found, redirecting to login');
             window.location.href = '/login';
         } else if (userRole !== 'ADMIN') {
-            console.log('Not an admin, redirecting to login');
             alert('Access denied. Admin role required.');
             window.location.href = '/login';
         } else {
-            // Token exists and user is admin
             document.getElementById('userEmail').textContent = userEmail || 'Admin';
             loadDashboard();
         }
 
         async function loadDashboard() {
             try {
-                // For now, show dummy data
-                // TODO: Replace with actual API calls
-                setTimeout(() => {
-                    document.getElementById('doctorCount').textContent = '12';
-                    document.getElementById('patientCount').textContent = '45';
-                    document.getElementById('appointmentCount').textContent = '8';
-                    document.getElementById('activeUserCount').textContent = '57';
+                const response = await fetch('/api/admin/dashboard-summary', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
 
-                    document.getElementById('loadingState').style.display = 'none';
-                    document.getElementById('dashboardContent').style.display = 'block';
-                }, 500);
+                if (!response.ok) {
+                    throw new Error('Failed to fetch dashboard summary');
+                }
 
-                // TODO: Actual API call would be:
-                // const response = await fetch('/api/admin/stats', {
-                //     headers: {
-                //         'Authorization': `Bearer ${token}`
-                //     }
-                // });
-                // const data = await response.json();
-                // Update stats with real data
+                const summary = await response.json();
 
+                document.getElementById('doctorCount').textContent = summary.totalDoctors ?? 0;
+                document.getElementById('patientCount').textContent = summary.totalPatients ?? 0;
+                document.getElementById('appointmentCount').textContent = summary.appointmentsToday ?? 0;
+                document.getElementById('completedAppointmentsToday').textContent = summary.completedAppointmentsToday ?? 0;
+                document.getElementById('doctorsAvailableToday').textContent = summary.doctorsAvailableToday ?? 0;
+
+                document.getElementById('appointmentCountMirror').textContent = `${summary.appointmentsToday ?? 0} scheduled`;
+                document.getElementById('completedCountMirror').textContent = `${summary.completedAppointmentsToday ?? 0} completed`;
+                document.getElementById('doctorCountMirror').textContent = `${summary.totalDoctors ?? 0} total`;
+                document.getElementById('availableCountMirror').textContent = `${summary.doctorsAvailableToday ?? 0} available`;
+                document.getElementById('patientCountMirror').textContent = `${summary.totalPatients ?? 0} active records`;
+
+                document.getElementById('loadingState').style.display = 'none';
+                document.getElementById('dashboardContent').style.display = 'grid';
             } catch (error) {
                 console.error('Error loading dashboard:', error);
                 alert('Failed to load dashboard data');
@@ -267,3 +172,4 @@
 </body>
 
 </html>
+

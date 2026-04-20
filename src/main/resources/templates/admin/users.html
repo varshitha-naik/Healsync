@@ -4,236 +4,211 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Manage Users - HealSync</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            font-family: 'Inter', -apple-system, sans-serif;
-            background: #f5f7fa;
-            color: #2d3748;
-        }
-
-        .navbar {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 1rem 2rem;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-        }
-
-        .navbar h1 {
-            font-size: 1.5rem;
-            font-weight: 700;
-        }
-
-        .user-info {
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-        }
-
-        .btn-logout {
-            background: rgba(255, 255, 255, 0.2);
-            border: 1px solid rgba(255, 255, 255, 0.3);
-            color: white;
-            padding: 0.5rem 1rem;
-            border-radius: 8px;
-            cursor: pointer;
-            transition: all 0.3s;
-        }
-
-        .btn-logout:hover {
-            background: rgba(255, 255, 255, 0.3);
-        }
-
-        .container {
-            max-width: 1200px;
-            margin: 2rem auto;
-            padding: 0 2rem;
-        }
-
-        .header-actions {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 2rem;
-        }
-
-        .btn {
-            padding: 0.75rem 1.5rem;
-            border: none;
-            border-radius: 8px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s;
-            text-decoration: none;
-            display: inline-flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-
-        .btn-primary {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-        }
-
-        .btn-primary:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 16px rgba(102, 126, 234, 0.3);
-        }
-
-        .card {
-            background: white;
-            border-radius: 16px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-            overflow: hidden;
-        }
-
-        table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-
-        th,
-        td {
-            padding: 1.25rem;
-            text-align: left;
-            border-bottom: 1px solid #e2e8f0;
-        }
-
-        th {
-            background: #f8fafc;
-            font-weight: 600;
-            color: #4a5568;
-            font-size: 0.875rem;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-        }
-
-        tr:hover {
-            background: #f8fafc;
-        }
-
-        .badge {
-            padding: 0.25rem 0.75rem;
-            border-radius: 9999px;
-            font-size: 0.75rem;
-            font-weight: 600;
-        }
-
-        .badge-admin {
-            background: #e9d8fd;
-            color: #6b46c1;
-        }
-
-        .badge-doctor {
-            background: #d1fae5;
-            color: #047857;
-        }
-
-        .badge-patient {
-            background: #dbeafe;
-            color: #1e40af;
-        }
-
-        .action-btn {
-            padding: 0.5rem;
-            border-radius: 6px;
-            border: none;
-            background: transparent;
-            cursor: pointer;
-            color: #718096;
-            transition: color 0.3s;
-        }
-
-        .action-btn:hover {
-            color: #667eea;
-            background: #edf2f7;
-        }
-
-        .loading {
-            text-align: center;
-            padding: 3rem;
-            color: #718096;
-        }
-    </style>
+    <title>Patients by Doctor - HealSync</title>
+    <link rel="stylesheet" th:href="@{/css/design-system.css}" href="/css/design-system.css">
 </head>
 
 <body>
-    <th:block th:replace="fragments/admin-header :: adminHeader"></th:block>
+    <!-- /* Redesigned: Patients by Doctor — follows clinical design system v1 */ -->
+    <div class="app-shell">
+        <th:block th:replace="fragments/admin-header :: adminHeader"></th:block>
+        <div class="app-main">
+            <header class="topbar">
+                <div class="topbar-title-group">
+                    <p class="breadcrumb">Admin / Patients</p>
+                    <h1>Patients by Doctor</h1>
+                </div>
+            </header>
 
-    <div class="container">
-        <div class="header-actions">
-            <h2>User Management</h2>
-            <button class="btn btn-primary" onclick="alert('Create User Modal')">
-                <span>➕</span> Add User
-            </button>
-        </div>
+            <main class="page-content">
+                <section class="card">
+                    <div class="section-header">
+                        <div>
+                            <h2>Patient associations</h2>
+                            <p class="section-copy">See which patients are associated with each doctor from appointment activity.</p>
+                        </div>
+                    </div>
+                    <div class="search-toolbar">
+                        <div class="field">
+                            <label for="searchInput">Search by doctor or patient name</label>
+                            <input type="text" id="searchInput" placeholder="Search doctors or patients">
+                        </div>
+                    </div>
+                </section>
 
-        <div class="card">
-            <div id="loadingState" class="loading">Loading users...</div>
-            <table id="usersTable" style="display: none;">
-                <thead>
-                    <tr>
-                        <th>Name</th>
-                        <th>Email</th>
-                        <th>Role</th>
-                        <th>Status</th>
-                        <th>Actions</th>
-                    </tr>
-                </thead>
-                <tbody id="usersTableBody">
-                    <!-- Rows will be populated by JS -->
-                </tbody>
-            </table>
+                <section class="card" style="margin-top: 24px;">
+                    <div id="loadingState" class="loading-block">Loading patient associations...</div>
+                    <div id="emptyState" class="empty-state" style="display: none;">
+                        <p>No doctors or patient associations found.</p>
+                    </div>
+                    <div id="doctorGroups" class="doctor-group-list" style="display: none;"></div>
+                </section>
+            </main>
         </div>
     </div>
 
     <script>
         const token = localStorage.getItem('jwtToken');
         const userEmail = localStorage.getItem('userEmail');
+        let groupsData = [];
 
         if (!token) window.location.href = '/login';
         document.getElementById('userEmail').textContent = userEmail;
 
-        async function loadUsers() {
-            // Simulate API call
-            setTimeout(() => {
-                const users = [
-                    { name: 'Alice Admin', email: 'admin@healsync.com', role: 'ADMIN', status: 'Active' },
-                    { name: 'Dr. John Smith', email: 'dr.smith@healsync.com', role: 'DOCTOR', status: 'Active' },
-                    { name: 'Jane Patient', email: 'patient.jane@example.com', role: 'PATIENT', status: 'Active' },
-                ];
+        async function loadPatientsByDoctor() {
+            try {
+                const response = await fetch('/api/admin/patients-by-doctor', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
 
-                const tbody = document.getElementById('usersTableBody');
-                tbody.innerHTML = users.map(user => `
-                    <tr>
-                        <td>
-                            <div style="font-weight: 500;">${user.name}</div>
-                        </td>
-                        <td>${user.email}</td>
-                        <td><span class="badge badge-${user.role.toLowerCase()}">${user.role}</span></td>
-                        <td><span style="color: #059669; font-weight: 500;">● ${user.status}</span></td>
-                        <td>
-                            <button class="action-btn" title="Edit">✏️</button>
-                            <button class="action-btn" title="Delete" style="color: #ef4444;">🗑️</button>
-                        </td>
-                    </tr>
-                `).join('');
+                if (!response.ok) {
+                    throw new Error('Failed to load patient associations');
+                }
 
-                document.getElementById('loadingState').style.display = 'none';
-                document.getElementById('usersTable').style.display = 'table';
-            }, 600);
+                groupsData = await response.json();
+                renderGroups(groupsData);
+            } catch (error) {
+                console.error(error);
+                document.getElementById('loadingState').innerText = 'Unable to load patient associations.';
+            }
         }
 
-        loadUsers();
+        function renderGroups(groups) {
+            const container = document.getElementById('doctorGroups');
+            const loading = document.getElementById('loadingState');
+            const empty = document.getElementById('emptyState');
+
+            container.innerHTML = '';
+
+            if (!groups.length) {
+                loading.style.display = 'none';
+                empty.style.display = 'grid';
+                container.style.display = 'none';
+                return;
+            }
+
+            groups.forEach(group => {
+                const details = document.createElement('details');
+                details.className = 'doctor-group';
+                details.open = true;
+
+                const patientsHtml = group.patients.length
+                    ? `<div class="patient-list">${group.patients.map(patient => `
+                        <article class="patient-item">
+                            <div class="patient-item-head">
+                                <div>
+                                    <h4>${escapeHtml(patient.patientName)}</h4>
+                                    <p>${escapeHtml(patient.email || 'No email available')}</p>
+                                </div>
+                                <span class="status-badge ${getStatusClass(patient.appointmentStatus)}">${formatStatus(patient.appointmentStatus)}</span>
+                            </div>
+                            <div class="patient-meta-grid">
+                                <div class="detail-card">
+                                    <label>Last appointment</label>
+                                    <span>${formatDate(patient.lastAppointmentDate)}</span>
+                                </div>
+                                <div class="detail-card">
+                                    <label>Status</label>
+                                    <span>${formatStatus(patient.appointmentStatus)}</span>
+                                </div>
+                            </div>
+                        </article>
+                    `).join('')}</div>`
+                    : `<div class="empty-state" style="min-height: 120px;"><p>No patients assigned yet.</p></div>`;
+
+                details.innerHTML = `
+                    <summary class="doctor-group-summary">
+                        <div class="doctor-group-meta">
+                            <img class="avatar-circle" style="object-fit: cover;" src="${escapeHtml(group.profilePhotoUrl || '/images/default-doctor.svg')}" alt="${escapeHtml(group.doctorName)}" onerror="this.src='/images/default-doctor.svg'">
+                            <div class="doctor-group-text">
+                                <h3>${escapeHtml(group.doctorName)}</h3>
+                                <p>${escapeHtml(group.specialization || 'General Medicine')} • ${escapeHtml(group.doctorEmail || 'No email available')}</p>
+                            </div>
+                        </div>
+                        <span class="doctor-group-count">${group.patients.length} patient${group.patients.length === 1 ? '' : 's'}</span>
+                    </summary>
+                    <div class="doctor-group-body">
+                        ${patientsHtml}
+                    </div>
+                `;
+
+                container.appendChild(details);
+            });
+
+            loading.style.display = 'none';
+            empty.style.display = 'none';
+            container.style.display = 'grid';
+        }
+
+        function applyFilter() {
+            const query = document.getElementById('searchInput').value.trim().toLowerCase();
+            if (!query) {
+                renderGroups(groupsData);
+                return;
+            }
+
+            const filtered = groupsData
+                .map(group => {
+                    const doctorMatch =
+                        group.doctorName.toLowerCase().includes(query) ||
+                        (group.doctorEmail || '').toLowerCase().includes(query) ||
+                        (group.specialization || '').toLowerCase().includes(query);
+
+                    return {
+                        ...group,
+                        patients: doctorMatch
+                            ? group.patients
+                            : group.patients.filter(patient =>
+                                patient.patientName.toLowerCase().includes(query) ||
+                                (patient.email || '').toLowerCase().includes(query)
+                            )
+                    };
+                })
+                .filter(group =>
+                    group.doctorName.toLowerCase().includes(query) ||
+                    (group.doctorEmail || '').toLowerCase().includes(query) ||
+                    (group.specialization || '').toLowerCase().includes(query) ||
+                    group.patients.length > 0
+                );
+
+            renderGroups(filtered);
+        }
+
+        function formatDate(value) {
+            if (!value) return 'No appointment recorded';
+            return new Date(value).toLocaleString([], {
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        }
+
+        function formatStatus(status) {
+            if (!status) return 'Unknown';
+            return status.charAt(0) + status.slice(1).toLowerCase();
+        }
+
+        function getStatusClass(status) {
+            if (status === 'CONFIRMED') return 'status-confirmed';
+            if (status === 'COMPLETED') return 'status-completed';
+            if (status === 'CANCELLED') return 'status-cancelled';
+            return 'status-requested';
+        }
+
+        function escapeHtml(value) {
+            if (!value) return '';
+            return value
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+
+        document.getElementById('searchInput').addEventListener('input', applyFilter);
+        loadPatientsByDoctor();
 
         function logout() {
             localStorage.clear();

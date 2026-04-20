@@ -1,241 +1,52 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org">
 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Register - HealSync Platform</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <style>
-        :root {
-            --primary: #4F46E5;
-            --primary-dark: #4338CA;
-            --secondary: #10B981;
-            --background: #F8FAFC;
-            --card-bg: #FFFFFF;
-            --text: #1F2937;
-            --text-light: #6B7280;
-        }
-
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 20px;
-        }
-
-        .register-container {
-            max-width: 500px;
-            width: 100%;
-            background: var(--card-bg);
-            border-radius: 24px;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-            padding: 48px 40px;
-            animation: slideUp 0.6s ease-out;
-        }
-
-        @keyframes slideUp {
-            from {
-                opacity: 0;
-                transform: translateY(30px);
-            }
-
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        .logo-container {
-            text-align: center;
-            margin-bottom: 32px;
-        }
-
-        .logo {
-            width: 64px;
-            height: 64px;
-            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
-            border-radius: 16px;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            font-size: 32px;
-            font-weight: 700;
-            margin-bottom: 16px;
-        }
-
-        h1 {
-            color: var(--text);
-            font-size: 28px;
-            font-weight: 700;
-            margin-bottom: 8px;
-        }
-
-        .subtitle {
-            color: var(--text-light);
-            font-size: 15px;
-        }
-
-        .form-group {
-            margin-bottom: 20px;
-        }
-
-        label {
-            display: block;
-            color: var(--text);
-            font-weight: 600;
-            font-size: 14px;
-            margin-bottom: 8px;
-        }
-
-        .form-control {
-            width: 100%;
-            padding: 14px 16px;
-            border: 2px solid #E5E7EB;
-            border-radius: 12px;
-            font-size: 15px;
-            transition: all 0.3s ease;
-            background: #F9FAFB;
-        }
-
-        .form-control:focus {
-            outline: none;
-            border-color: var(--primary);
-            background: white;
-            box-shadow: 0 0 0 4px rgba(79, 70, 229, 0.1);
-        }
-
-        .form-row {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 16px;
-        }
-
-        .btn-primary {
-            width: 100%;
-            padding: 16px;
-            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
-            color: white;
-            border: none;
-            border-radius: 12px;
-            font-size: 16px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            margin-top: 8px;
-        }
-
-        .btn-primary:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 12px 24px rgba(79, 70, 229, 0.3);
-        }
-
-        .btn-primary:active {
-            transform: translateY(0);
-        }
-
-        .login-link {
-            text-align: center;
-            margin-top: 24px;
-            color: var(--text-light);
-            font-size: 14px;
-        }
-
-        .login-link a {
-            color: var(--primary);
-            text-decoration: none;
-            font-weight: 600;
-            transition: color 0.3s ease;
-        }
-
-        .login-link a:hover {
-            color: var(--primary-dark);
-            text-decoration: underline;
-        }
-
-        .alert {
-            padding: 14px 16px;
-            border-radius: 12px;
-            margin-bottom: 20px;
-            font-size: 14px;
-        }
-
-        .alert-success {
-            background: #D1FAE5;
-            color: #065F46;
-            border: 1px solid #6EE7B7;
-        }
-
-        .alert-danger {
-            background: #FEE2E2;
-            color: #991B1B;
-            border: 1px solid #FCA5A5;
-        }
-
-        .info-box {
-            background: #EFF6FF;
-            border: 1px solid #60A5FA;
-            border-radius: 12px;
-            padding: 16px;
-            margin-top: 20px;
-            font-size: 13px;
-            color: #1E40AF;
-        }
-
-        .info-box strong {
-            display: block;
-            margin-bottom: 8px;
-            font-size: 14px;
-        }
-    </style>
+    <title>Create Account - HealSync</title>
+    <link rel="stylesheet" th:href="@{/css/design-system.css}" href="/css/design-system.css">
 </head>
 
-<body>
-    <div class="register-container">
-        <div class="logo-container">
-            <div class="logo">H+</div>
-            <h1>Create Account</h1>
-            <p class="subtitle">Join HealSync Platform</p>
+<body class="auth-page">
+    <!-- /* Redesigned: Register â€” follows clinical design system v1 */ -->
+    <section class="auth-card">
+        <div class="auth-header">
+            <div class="brand-copy">
+                <div class="brand-mark">HS</div>
+                <h1 class="auth-title">Create your patient account</h1>
+                <p class="auth-subtitle">A calm, secure way to manage appointments and records.</p>
+            </div>
         </div>
 
         <div id="message"></div>
 
-        <form id="registerForm">
-            <div class="form-group">
-                <label for="fullName">Full Name</label>
-                <input type="text" class="form-control" id="fullName" name="fullName" required placeholder="John Doe">
+        <form id="registerForm" class="page-stack">
+            <div class="field">
+                <label for="fullName">Full name</label>
+                <input type="text" class="input" id="fullName" name="fullName" required placeholder="John Doe">
             </div>
 
-            <div class="form-group">
-                <label for="email">Email Address</label>
-                <input type="email" class="form-control" id="email" name="email" required placeholder="your@email.com">
+            <div class="field">
+                <label for="email">Email address</label>
+                <input type="email" class="input" id="email" name="email" required placeholder="you@example.com">
             </div>
 
-            <div class="form-group">
+            <div class="field">
                 <label for="password">Password</label>
-                <input type="password" class="form-control" id="password" name="password" required
-                    placeholder="Minimum 6 characters" minlength="6">
+                <input type="password" class="input" id="password" name="password" required minlength="6"
+                    placeholder="Minimum 6 characters">
             </div>
 
-            <div class="form-row">
-                <div class="form-group">
-                    <label for="dob">Date of Birth</label>
-                    <input type="date" class="form-control" id="dob" name="dob" required>
+            <div class="form-grid">
+                <div class="field">
+                    <label for="dob">Date of birth</label>
+                    <input type="date" class="input" id="dob" name="dob" required>
                 </div>
 
-                <div class="form-group">
+                <div class="field">
                     <label for="gender">Gender</label>
-                    <select class="form-control" id="gender" name="gender" required>
+                    <select class="select" id="gender" name="gender" required>
                         <option value="">Select</option>
                         <option value="Male">Male</option>
                         <option value="Female">Female</option>
@@ -244,27 +55,25 @@
                 </div>
             </div>
 
-            <div class="form-group">
-                <label for="phone">Phone Number</label>
-                <input type="tel" class="form-control" id="phone" name="phone" required placeholder="+1-555-0123">
+            <div class="field">
+                <label for="phone">Phone number</label>
+                <input type="tel" class="input" id="phone" name="phone" required placeholder="+1 555 0123">
             </div>
 
-            <button type="submit" class="btn-primary">Create Account</button>
+            <button type="submit" class="btn-primary btn-block">Create Account</button>
         </form>
 
-        <div class="login-link">
-            Already have an account? <a href="/login">Sign in</a>
+        <div class="auth-footer">
+            <p>Already registered? <a href="/login">Sign in</a></p>
         </div>
 
-        <div class="info-box">
-            <strong>📝 Note:</strong>
-            You'll register as a <strong>Patient</strong> initially. After registration, you can update your role to
-            ADMIN in the database if needed.
-        </div>
-    </div>
+        <section class="card" style="margin-top: 24px;">
+            <h2>Account setup note</h2>
+            <p class="section-copy">New self-service registrations are created as patient accounts by default.</p>
+        </section>
+    </section>
 
     <script>
-        // Check if already logged in
         const existingToken = localStorage.getItem('jwtToken');
         const existingRole = localStorage.getItem('userRole');
         const currentPath = window.location.pathname;
@@ -305,28 +114,23 @@
 
                 if (response.ok) {
                     const data = await response.json();
-
-                    // Show success message
                     document.getElementById('message').innerHTML = `
                         <div class="alert alert-success">
-                            ✅ Account created successfully!<br>
+                            Account created successfully.<br>
                             <strong>Email:</strong> ${data.email}<br>
-                            <strong>Role:</strong> ${data.role}<br>
-                            <br>
+                            <strong>Role:</strong> ${data.role}<br><br>
                             Redirecting to login...
                         </div>
                     `;
 
-                    // Redirect to login after 2 seconds
                     setTimeout(() => {
                         window.location.href = '/login';
                     }, 2000);
-
                 } else {
                     const error = await response.text();
                     document.getElementById('message').innerHTML = `
                         <div class="alert alert-danger">
-                            ❌ Registration failed: ${error || 'Please try again'}
+                            Registration failed: ${error || 'Please try again'}
                         </div>
                     `;
                 }
@@ -334,7 +138,7 @@
                 console.error('Registration error:', error);
                 document.getElementById('message').innerHTML = `
                     <div class="alert alert-danger">
-                        ❌ An error occurred. Please try again.
+                        An error occurred. Please try again.
                     </div>
                 `;
             }
@@ -343,3 +147,4 @@
 </body>
 
 </html>
+

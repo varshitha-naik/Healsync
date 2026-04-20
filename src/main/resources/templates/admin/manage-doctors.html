@@ -1,418 +1,145 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org">
 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Manage Doctors - HealSync</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            font-family: 'Inter', -apple-system, sans-serif;
-            background: #f5f7fa;
-            color: #2d3748;
-        }
-
-        .navbar {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 1rem 2rem;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-        }
-
-        .navbar h1 {
-            font-size: 1.5rem;
-            font-weight: 700;
-            cursor: pointer;
-        }
-
-        .user-info {
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-        }
-
-        .btn-logout {
-            background: rgba(255, 255, 255, 0.2);
-            border: 1px solid rgba(255, 255, 255, 0.3);
-            color: white;
-            padding: 0.5rem 1rem;
-            border-radius: 8px;
-            cursor: pointer;
-            transition: all 0.3s;
-        }
-
-        .btn-logout:hover {
-            background: rgba(255, 255, 255, 0.3);
-        }
-
-        .container {
-            max-width: 1200px;
-            margin: 2rem auto;
-            padding: 0 2rem;
-        }
-
-        .section {
-            background: white;
-            border-radius: 16px;
-            padding: 2rem;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-            margin-bottom: 2rem;
-        }
-
-        .section-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 1.5rem;
-        }
-
-        .section h2 {
-            font-size: 1.5rem;
-            color: #2d3748;
-        }
-
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 1rem;
-        }
-
-        th,
-        td {
-            padding: 1rem;
-            text-align: left;
-            border-bottom: 1px solid #e2e8f0;
-        }
-
-        th {
-            background: #f8fafc;
-            font-weight: 600;
-            color: #4a5568;
-        }
-
-        tbody tr:hover {
-            background: #f1f5f9;
-        }
-
-        .btn {
-            padding: 0.5rem 1rem;
-            border: none;
-            border-radius: 6px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-
-        .btn-primary {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-        }
-
-        .btn-primary:hover {
-            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
-            transform: translateY(-1px);
-        }
-
-        .btn-danger {
-            background: #f56565;
-            color: white;
-        }
-
-        .btn-danger:hover {
-            background: #e53e3e;
-        }
-
-        .btn-secondary {
-            background: #e2e8f0;
-            color: #4a5568;
-        }
-
-        .btn-secondary:hover {
-            background: #cbd5e0;
-        }
-
-        .btn-sm {
-            padding: 0.4rem 0.75rem;
-            font-size: 0.875rem;
-        }
-
-        .actions-col {
-            display: flex;
-            gap: 0.5rem;
-        }
-
-        .modal {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.5);
-            align-items: center;
-            justify-content: center;
-            z-index: 1000;
-        }
-
-        .modal-content {
-            background: white;
-            padding: 2rem;
-            border-radius: 12px;
-            width: 100%;
-            max-width: 500px;
-            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
-            animation: slideIn 0.3s ease-out;
-        }
-
-        @keyframes slideIn {
-            from {
-                transform: translateY(-20px);
-                opacity: 0;
-            }
-
-            to {
-                transform: translateY(0);
-                opacity: 1;
-            }
-        }
-
-        .modal-header {
-            margin-bottom: 1.5rem;
-        }
-
-        .modal-header h3 {
-            font-size: 1.25rem;
-            color: #2d3748;
-        }
-
-        .form-group {
-            margin-bottom: 1rem;
-        }
-
-        .form-group label {
-            display: block;
-            margin-bottom: 0.5rem;
-            font-weight: 500;
-            color: #4a5568;
-        }
-
-        .form-control {
-            width: 100%;
-            padding: 0.75rem;
-            border: 1px solid #cbd5e0;
-            border-radius: 6px;
-            font-family: inherit;
-        }
-
-        .modal-actions {
-            display: flex;
-            justify-content: flex-end;
-            gap: 1rem;
-            margin-top: 2rem;
-        }
-
-        #toast-container {
-            position: fixed;
-            bottom: 20px;
-            right: 20px;
-            z-index: 9999;
-        }
-
-        .toast {
-            padding: 1rem 1.5rem;
-            margin-top: 0.5rem;
-            border-radius: 8px;
-            color: white;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-            animation: slideUp 0.3s ease-out;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-
-        @keyframes slideUp {
-            from {
-                transform: translateY(100%);
-                opacity: 0;
-            }
-
-            to {
-                transform: translateY(0);
-                opacity: 1;
-            }
-        }
-
-        .toast.success {
-            background-color: #48bb78;
-        }
-
-        .toast.error {
-            background-color: #f56565;
-        }
-
-        .loading {
-            text-align: center;
-            padding: 3rem;
-            color: #718096;
-        }
-
-        .spinner {
-            border: 3px solid #f3f4f6;
-            border-top: 3px solid #667eea;
-            border-radius: 50%;
-            width: 40px;
-            height: 40px;
-            animation: spin 1s linear infinite;
-            margin: 0 auto 1rem;
-        }
-
-        @keyframes spin {
-            0% {
-                transform: rotate(0deg);
-            }
-
-            100% {
-                transform: rotate(360deg);
-            }
-        }
-
-        .badge {
-            padding: 0.25rem 0.5rem;
-            border-radius: 9999px;
-            font-size: 0.75rem;
-            font-weight: 600;
-        }
-
-        .badge-active {
-            background: #c6f6d5;
-            color: #22543d;
-        }
-
-        .badge-inactive {
-            background: #fed7d7;
-            color: #822727;
-        }
-
-        .doctor-cell {
-            display: flex;
-            align-items: center;
-            gap: 0.75rem;
-        }
-
-        .doctor-photo {
-            width: 48px;
-            height: 48px;
-            border-radius: 50%;
-            object-fit: cover;
-            border: 2px solid #e2e8f0;
-            background: #f8fafc;
-            flex-shrink: 0;
-        }
-
-        .doctor-meta {
-            display: flex;
-            flex-direction: column;
-            gap: 0.15rem;
-        }
-
-        .doctor-meta small {
-            color: #718096;
-        }
-    </style>
+    <link rel="stylesheet" th:href="@{/css/design-system.css}" href="/css/design-system.css">
 </head>
 
 <body>
-    <th:block th:replace="fragments/admin-header :: adminHeader"></th:block>
+    <!-- /* Redesigned: Manage Doctors â€” follows clinical design system v1 */ -->
+    <div class="app-shell">
+        <th:block th:replace="fragments/admin-header :: adminHeader"></th:block>
+        <div class="app-main">
+            <header class="topbar">
+                <div class="topbar-title-group">
+                    <p class="breadcrumb">Admin / Doctors</p>
+                    <h1>Doctor management</h1>
+                </div>
+                <div class="topbar-actions">
+                    <a class="btn-primary" href="/admin/create-doctor">Add Doctor</a>
+                </div>
+            </header>
 
-    <div class="container">
-        <div class="section">
-            <div class="section-header">
-                <h2>Manage Doctors</h2>
-                <button class="btn btn-primary" onclick="window.location.href='/admin/create-doctor'">➕ Add
-                    Doctor</button>
-            </div>
+            <main class="page-content">
+                <section class="table-card">
+                    <div class="section-header" style="padding: 20px 24px 0;">
+                        <div>
+                            <h2>Clinician roster</h2>
+                            <p class="section-copy">Review profile completeness, experience, and current status.</p>
+                        </div>
+                    </div>
 
-            <div id="loadingState" class="loading">
-                <div class="spinner"></div>
-                <p>Loading doctors...</p>
-            </div>
+                    <div class="filter-grid admin-filter-grid" style="padding: 16px 24px 8px;">
+                        <div class="field">
+                            <label for="doctorSearch">Search doctor</label>
+                            <input id="doctorSearch" type="text" placeholder="Search by doctor name">
+                        </div>
+                        <div class="field">
+                            <label for="specializationFilter">Specialization</label>
+                            <select id="specializationFilter">
+                                <option value="">All specializations</option>
+                            </select>
+                        </div>
+                        <div class="field">
+                            <label for="statusFilter">Status</label>
+                            <select id="statusFilter">
+                                <option value="">All statuses</option>
+                                <option value="ACTIVE">Active</option>
+                                <option value="INACTIVE">Inactive</option>
+                            </select>
+                        </div>
+                        <div class="field">
+                            <label for="availabilityFilter">Availability</label>
+                            <select id="availabilityFilter">
+                                <option value="">All availability</option>
+                                <option value="AVAILABLE_TODAY">Available Today</option>
+                                <option value="FULLY_BOOKED">Fully Booked</option>
+                                <option value="NOT_SCHEDULED">Not Scheduled</option>
+                            </select>
+                        </div>
+                    </div>
 
-            <div id="tableContainer" style="display: none; overflow-x: auto;">
-                <table id="doctorsTable">
-                    <thead>
-                        <tr>
-                            <th>Doctor</th>
-                            <th>Specialization</th>
-                            <th>Email</th>
-                            <th>Experience</th>
-                            <th>Clinic</th>
-                            <th>Status</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody id="doctorsList">
-                        <!-- Doctors will be populated here -->
-                    </tbody>
-                </table>
-            </div>
+                    <div id="loadingState" class="loading-block" style="padding: 24px;">
+                        <div class="skeleton-line"></div>
+                        <div class="skeleton-line"></div>
+                        <div class="skeleton-line"></div>
+                    </div>
+
+                    <div id="tableContainer" style="display: none; overflow-x: auto;">
+                        <table id="doctorsTable" class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Doctor</th>
+                                    <th>Specialization</th>
+                                    <th>Email</th>
+                                    <th>Experience</th>
+                                    <th>Clinic</th>
+                                    <th>Patients</th>
+                                    <th>Last appointment</th>
+                                    <th>Availability</th>
+                                    <th>Status</th>
+                                    <th class="actions-cell">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="doctorsList"></tbody>
+                        </table>
+                    </div>
+                </section>
+            </main>
         </div>
     </div>
 
-    <!-- Edit Modal -->
-    <div id="editModal" class="modal" style="display: none;">
+    <div id="editModal" class="modal is-hidden">
         <div class="modal-content">
-            <div class="modal-header">
-                <h3>Edit Doctor</h3>
-            </div>
-            <form id="editDoctorForm" onsubmit="handleEditSubmit(event)">
+            <h2>Edit doctor</h2>
+            <form id="editDoctorForm" onsubmit="handleEditSubmit(event)" class="page-stack" style="margin-top: 16px;">
                 <input type="hidden" id="editDoctorId">
-                <div class="form-group">
-                    <label for="editFullName">Full Name</label>
-                    <input type="text" id="editFullName" class="form-control" required>
+                <div class="field">
+                    <label for="editFullName">Full name</label>
+                    <input type="text" id="editFullName" required>
                 </div>
-                <div class="form-group">
+                <div class="field">
                     <label for="editSpecialization">Specialization</label>
-                    <input type="text" id="editSpecialization" class="form-control" required>
+                    <input type="text" id="editSpecialization" required>
                 </div>
-                <div class="form-group">
-                    <label for="editExperience">Experience (Years)</label>
-                    <input type="number" id="editExperience" class="form-control" required min="0">
+                <div class="field">
+                    <label for="editExperience">Experience (years)</label>
+                    <input type="number" id="editExperience" required min="0">
                 </div>
-                <div class="form-group">
+                <div class="field">
                     <label for="editBio">Bio</label>
-                    <textarea id="editBio" class="form-control" rows="3"></textarea>
+                    <textarea id="editBio" rows="3"></textarea>
                 </div>
                 <div class="modal-actions">
-                    <button type="button" class="btn btn-secondary" onclick="closeEditModal()">Cancel</button>
-                    <button type="submit" class="btn btn-primary" id="saveEditBtn">Save Changes</button>
+                    <button type="button" class="btn-secondary" onclick="closeEditModal()">Cancel</button>
+                    <button type="submit" class="btn-primary" id="saveEditBtn">Save Changes</button>
                 </div>
             </form>
         </div>
     </div>
 
-    <!-- Delete Confirmation Modal -->
-    <div id="deleteModal" class="modal" style="display: none;">
+    <div id="viewModal" class="modal is-hidden">
         <div class="modal-content">
-            <div class="modal-header">
-                <h3>Confirm Deletion</h3>
+            <h2>Doctor profile</h2>
+            <div id="viewDoctorContent" class="page-stack" style="margin-top: 16px;"></div>
+            <div class="modal-actions">
+                <button type="button" class="btn-secondary" onclick="closeViewModal()">Close</button>
             </div>
+        </div>
+    </div>
+
+    <div id="deleteModal" class="modal is-hidden">
+        <div class="modal-content">
+            <h2>Deactivate doctor</h2>
             <p>Are you sure you want to deactivate <strong id="deleteDoctorName"></strong>?</p>
-            <p style="font-size: 0.875rem; color: #718096; margin-top: 0.5rem;">This action will mark the doctor as
-                INACTIVE.</p>
+            <p class="section-copy">This updates the status to inactive.</p>
             <input type="hidden" id="deleteDoctorId">
             <div class="modal-actions">
-                <button type="button" class="btn btn-secondary" onclick="closeDeleteModal()">Cancel</button>
-                <button type="button" class="btn btn-danger" onclick="confirmDelete()"
-                    id="confirmDeleteBtn">Delete</button>
+                <button type="button" class="btn-secondary" onclick="closeDeleteModal()">Cancel</button>
+                <button type="button" class="btn-destructive" onclick="confirmDelete()" id="confirmDeleteBtn">Deactivate</button>
             </div>
         </div>
     </div>
@@ -420,7 +147,6 @@
     <div id="toast-container"></div>
 
     <script>
-        // Check JWT token on page load
         const token = localStorage.getItem('jwtToken');
         const userEmail = localStorage.getItem('userEmail');
         const userRole = localStorage.getItem('userRole');
@@ -434,13 +160,13 @@
         }
 
         let doctorsData = [];
+        let filteredDoctorsData = [];
+        let filtersInitialized = false;
 
         async function loadDoctors() {
             try {
                 const response = await fetch('/api/admin/doctors', {
-                    headers: {
-                        'Authorization': `Bearer ${token}`
-                    }
+                    headers: { 'Authorization': `Bearer ${token}` }
                 });
 
                 if (!response.ok) {
@@ -449,14 +175,15 @@
 
                 const data = await response.json();
                 doctorsData = data;
-                renderTable(data);
+                setupFilters(data);
+                applyFilters();
 
                 document.getElementById('loadingState').style.display = 'none';
                 document.getElementById('tableContainer').style.display = 'block';
             } catch (error) {
                 console.error('Error loading doctors:', error);
                 showToast('Failed to load doctors data', 'error');
-                document.getElementById('loadingState').innerHTML = '<p style="color:red;">Error loading doctors.</p>';
+                document.getElementById('loadingState').innerHTML = '<p class="text-danger">Error loading doctors.</p>';
             }
         }
 
@@ -465,38 +192,127 @@
             tbody.innerHTML = '';
 
             if (doctors.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: #718096;">No doctors found</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="10" class="text-center">No doctors found</td></tr>';
                 return;
             }
 
             doctors.forEach(doc => {
-                const tr = document.createElement('tr');
-
-                const statusBadgeClass = doc.status === 'ACTIVE' ? 'badge-active' : 'badge-inactive';
+                const statusBadgeClass = doc.status === 'ACTIVE' ? 'status-active-admin' : 'status-inactive-admin';
                 const statusText = doc.status === 'ACTIVE' ? 'Active' : 'Inactive';
+                const availabilityBadgeClass = getAvailabilityBadgeClass(doc.availabilityStatus);
 
+                const tr = document.createElement('tr');
                 tr.innerHTML = `
                     <td>
-                        <div class="doctor-cell">
-                            <img class="doctor-photo" src="${escapeHtml(getDoctorPhotoUrl(doc.profilePhotoUrl))}" alt="${escapeHtml(doc.fullName)}" onerror="handleDoctorImageError(this)">
-                            <div class="doctor-meta">
-                                <strong>${escapeHtml(doc.fullName)}</strong>
-                                <small>ID: ${doc.id}</small>
+                        <div class="user-summary">
+                            <img class="avatar-circle" style="object-fit: cover;" src="${escapeHtml(getDoctorPhotoUrl(doc.profilePhotoUrl))}" alt="${escapeHtml(doc.fullName)}" onerror="handleDoctorImageError(this)">
+                            <div class="user-meta">
+                                <p class="user-name">${escapeHtml(doc.fullName)}</p>
+                                <p class="user-email">ID: ${doc.id}</p>
                             </div>
                         </div>
                     </td>
                     <td>${escapeHtml(doc.specialization)}</td>
                     <td>${escapeHtml(doc.email)}</td>
-                    <td>${doc.experienceYears} yrs</td>
-                    <td>${escapeHtml(doc.clinicName)}</td>
-                    <td><span class="badge ${statusBadgeClass}">${statusText}</span></td>
-                    <td class="actions-col">
-                        <button class="btn btn-primary btn-sm" onclick="openEditModal(${doc.id})">✏️ Edit</button>
-                        ${doc.status === 'ACTIVE' ? `<button class="btn btn-danger btn-sm" onclick="openDeleteModal(${doc.id}, '${escapeHtml(doc.fullName)}')">🗑️ Delete</button>` : ''}
+                    <td>${doc.experienceYears ?? 0} yrs</td>
+                    <td>${escapeHtml(doc.clinicName || 'N/A')}</td>
+                    <td>${doc.patientCount ?? 0}</td>
+                    <td>${formatDateTime(doc.lastAppointment)}</td>
+                    <td>
+                        <div style="display: grid; gap: 6px;">
+                            <span class="status-badge ${availabilityBadgeClass}">${formatAvailabilityLabel(doc.availabilityStatus)}</span>
+                            <span class="user-email">${escapeHtml(doc.availabilitySummary || 'Not Scheduled')}</span>
+                        </div>
+                    </td>
+                    <td><span class="status-badge ${statusBadgeClass}">${statusText}</span></td>
+                    <td class="actions-cell">
+                        <div class="row-actions horizontal-actions" style="justify-content: flex-end;">
+                            <button class="btn-secondary" type="button" onclick="openViewModal(${doc.id})">View</button>
+                            <button class="btn-secondary" type="button" onclick="openEditModal(${doc.id})">Edit</button>
+                            <button class="${doc.status === 'ACTIVE' ? 'btn-destructive' : 'btn-primary'}" type="button" onclick="updateDoctorStatus(${doc.id}, '${doc.status === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE'}')">
+                                ${doc.status === 'ACTIVE' ? 'Deactivate' : 'Activate'}
+                            </button>
+                        </div>
                     </td>
                 `;
                 tbody.appendChild(tr);
             });
+        }
+
+        function setupFilters(doctors) {
+            const searchInput = document.getElementById('doctorSearch');
+            const specializationFilter = document.getElementById('specializationFilter');
+            const statusFilter = document.getElementById('statusFilter');
+            const availabilityFilter = document.getElementById('availabilityFilter');
+
+            const specializations = [...new Set(doctors
+                .map(doc => doc.specialization)
+                .filter(Boolean))]
+                .sort((a, b) => a.localeCompare(b));
+
+            specializationFilter.innerHTML = '<option value="">All specializations</option>';
+            specializations.forEach(spec => {
+                const option = document.createElement('option');
+                option.value = spec;
+                option.textContent = spec;
+                specializationFilter.appendChild(option);
+            });
+
+            if (!filtersInitialized) {
+                searchInput.addEventListener('input', applyFilters);
+                specializationFilter.addEventListener('change', applyFilters);
+                statusFilter.addEventListener('change', applyFilters);
+                availabilityFilter.addEventListener('change', applyFilters);
+                filtersInitialized = true;
+            }
+        }
+
+        function applyFilters() {
+            const searchValue = document.getElementById('doctorSearch').value.trim().toLowerCase();
+            const specializationValue = document.getElementById('specializationFilter').value;
+            const statusValue = document.getElementById('statusFilter').value;
+            const availabilityValue = document.getElementById('availabilityFilter').value;
+
+            filteredDoctorsData = doctorsData.filter(doc => {
+                const matchesName = !searchValue || (doc.fullName || '').toLowerCase().includes(searchValue);
+                const matchesSpecialization = !specializationValue || doc.specialization === specializationValue;
+                const matchesStatus = !statusValue || doc.status === statusValue;
+                const matchesAvailability = !availabilityValue || doc.availabilityStatus === availabilityValue;
+
+                return matchesName && matchesSpecialization && matchesStatus && matchesAvailability;
+            });
+
+            renderTable(filteredDoctorsData);
+        }
+
+        function openViewModal(doctorId) {
+            const doc = doctorsData.find(d => d.id === doctorId);
+            if (!doc) return;
+
+            const container = document.getElementById('viewDoctorContent');
+            container.innerHTML = `
+                <div class="user-summary">
+                    <img class="avatar-circle" style="object-fit: cover;" src="${escapeHtml(getDoctorPhotoUrl(doc.profilePhotoUrl))}" alt="${escapeHtml(doc.fullName)}" onerror="handleDoctorImageError(this)">
+                    <div class="user-meta">
+                        <p class="user-name">${escapeHtml(doc.fullName)}</p>
+                        <p class="user-email">${escapeHtml(doc.email || '')}</p>
+                    </div>
+                </div>
+                <div class="details-grid">
+                    <div class="detail-card"><label>Specialization</label><strong>${escapeHtml(doc.specialization || 'N/A')}</strong></div>
+                    <div class="detail-card"><label>Experience</label><strong>${doc.experienceYears ?? 0} years</strong></div>
+                    <div class="detail-card"><label>Clinic</label><strong>${escapeHtml(doc.clinicName || 'N/A')}</strong></div>
+                    <div class="detail-card"><label>Patients</label><strong>${doc.patientCount ?? 0}</strong></div>
+                    <div class="detail-card"><label>Last appointment</label><strong>${formatDateTime(doc.lastAppointment)}</strong></div>
+                    <div class="detail-card"><label>Availability</label><strong>${escapeHtml(doc.availabilitySummary || 'Not Scheduled')}</strong></div>
+                </div>
+            `;
+
+            document.getElementById('viewModal').classList.remove('is-hidden');
+        }
+
+        function closeViewModal() {
+            document.getElementById('viewModal').classList.add('is-hidden');
         }
 
         function openEditModal(doctorId) {
@@ -508,12 +324,11 @@
             document.getElementById('editSpecialization').value = doc.specialization;
             document.getElementById('editExperience').value = doc.experienceYears;
             document.getElementById('editBio').value = doc.bio || '';
-
-            document.getElementById('editModal').style.display = 'flex';
+            document.getElementById('editModal').classList.remove('is-hidden');
         }
 
         function closeEditModal() {
-            document.getElementById('editModal').style.display = 'none';
+            document.getElementById('editModal').classList.add('is-hidden');
         }
 
         async function handleEditSubmit(e) {
@@ -548,7 +363,7 @@
 
                 showToast('Doctor updated successfully', 'success');
                 closeEditModal();
-                loadDoctors(); // reload data
+                loadDoctors();
             } catch (error) {
                 console.error(error);
                 showToast('Failed to update doctor', 'error');
@@ -561,27 +376,24 @@
         function openDeleteModal(doctorId, doctorName) {
             document.getElementById('deleteDoctorId').value = doctorId;
             document.getElementById('deleteDoctorName').textContent = doctorName;
-            document.getElementById('deleteModal').style.display = 'flex';
+            document.getElementById('deleteModal').classList.remove('is-hidden');
         }
 
         function closeDeleteModal() {
-            document.getElementById('deleteModal').style.display = 'none';
+            document.getElementById('deleteModal').classList.add('is-hidden');
         }
 
         async function confirmDelete() {
             const id = document.getElementById('deleteDoctorId').value;
-
             const btn = document.getElementById('confirmDeleteBtn');
             const originalText = btn.textContent;
-            btn.textContent = 'Deleting...';
+            btn.textContent = 'Deactivating...';
             btn.disabled = true;
 
             try {
                 const response = await fetch(`/api/admin/doctors/${id}`, {
                     method: 'DELETE',
-                    headers: {
-                        'Authorization': `Bearer ${token}`
-                    }
+                    headers: { 'Authorization': `Bearer ${token}` }
                 });
 
                 if (!response.ok) {
@@ -590,13 +402,36 @@
 
                 showToast('Doctor deleted successfully', 'success');
                 closeDeleteModal();
-                loadDoctors(); // reload data
+                loadDoctors();
             } catch (error) {
                 console.error(error);
                 showToast('Failed to delete doctor', 'error');
             } finally {
                 btn.textContent = originalText;
                 btn.disabled = false;
+            }
+        }
+
+        async function updateDoctorStatus(doctorId, status) {
+            const actionLabel = status === 'ACTIVE' ? 'activate' : 'deactivate';
+            const proceed = window.confirm(`Are you sure you want to ${actionLabel} this doctor?`);
+            if (!proceed) return;
+
+            try {
+                const response = await fetch(`/api/admin/doctors/${doctorId}/status?status=${status}`, {
+                    method: 'PUT',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to update doctor status');
+                }
+
+                showToast(`Doctor ${status === 'ACTIVE' ? 'activated' : 'deactivated'} successfully`, 'success');
+                loadDoctors();
+            } catch (error) {
+                console.error(error);
+                showToast('Failed to update doctor status', 'error');
             }
         }
 
@@ -610,41 +445,26 @@
         function showToast(message, type = 'success') {
             const container = document.getElementById('toast-container');
             const toast = document.createElement('div');
-            toast.className = `toast ${type}`;
-
-            const icon = type === 'success' ? '✅' : '❌';
-            toast.innerHTML = `<span>${icon}</span> <span>${message}</span>`;
-
+            toast.className = 'toast';
+            toast.innerHTML = `<span>${message}</span><button class="btn-secondary" type="button">Undo</button>`;
+            if (type === 'error') toast.style.borderColor = 'rgba(220, 38, 38, 0.2)';
             container.appendChild(toast);
-
-            // Trigger animation
-            setTimeout(() => { toast.style.display = 'flex'; }, 10);
-
-            // Remove after 3 seconds
-            setTimeout(() => {
-                toast.style.opacity = '0';
-                setTimeout(() => toast.remove(), 300);
-            }, 3000);
+            setTimeout(() => toast.remove(), 4000);
         }
 
         function getDoctorPhotoUrl(photoUrl) {
             if (!photoUrl || !photoUrl.trim()) {
                 return '/images/default-doctor.svg';
             }
-
             return photoUrl.trim();
         }
 
         function handleDoctorImageError(img) {
-            if (img.dataset.fallbackApplied === 'true') {
-                return;
-            }
-
+            if (img.dataset.fallbackApplied === 'true') return;
             img.dataset.fallbackApplied = 'true';
             img.src = '/images/default-doctor.svg';
         }
 
-        // Helper to prevent XSS
         function escapeHtml(unsafe) {
             if (!unsafe) return '';
             return unsafe
@@ -654,7 +474,29 @@
                 .replace(/"/g, "&quot;")
                 .replace(/'/g, "&#039;");
         }
+
+        function formatDateTime(value) {
+            if (!value) return 'No appointments yet';
+            const parsed = new Date(value);
+            if (Number.isNaN(parsed.getTime())) return 'No appointments yet';
+            return parsed.toLocaleString();
+        }
+
+        function formatAvailabilityLabel(value) {
+            if (!value) return 'Not Scheduled';
+            if (value === 'AVAILABLE_TODAY') return 'Available Today';
+            if (value === 'FULLY_BOOKED') return 'Fully Booked';
+            if (value === 'NOT_SCHEDULED') return 'Not Scheduled';
+            return value.replaceAll('_', ' ');
+        }
+
+        function getAvailabilityBadgeClass(value) {
+            if (value === 'AVAILABLE_TODAY') return 'status-availability-open';
+            if (value === 'FULLY_BOOKED') return 'status-availability-full';
+            return 'status-availability-none';
+        }
     </script>
 </body>
 
 </html>
+

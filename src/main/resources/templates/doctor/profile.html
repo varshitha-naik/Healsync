@@ -1,192 +1,56 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org">
 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Doctor Profile - HealSync</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            font-family: 'Inter', -apple-system, sans-serif;
-            background: #f5f7fa;
-            color: #2d3748;
-        }
-
-        /* Using same styles as dashboard */
-        .container {
-            max-width: 800px;
-            margin: 2rem auto;
-            padding: 0 2rem;
-        }
-
-        .card {
-            background: white;
-            border-radius: 16px;
-            padding: 2rem;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-            text-align: center;
-        }
-
-        .profile-img-container {
-            width: 150px;
-            height: 150px;
-            margin: 0 auto 1.5rem;
-            position: relative;
-        }
-
-        .profile-img {
-            width: 100%;
-            height: 100%;
-            border-radius: 50%;
-            object-fit: cover;
-            border: 4px solid #10B981;
-            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
-        }
-
-        h2 {
-            font-size: 1.5rem;
-            margin-bottom: 0.5rem;
-            color: #2d3748;
-        }
-
-        .specialization {
-            color: #10B981;
-            font-weight: 600;
-            font-size: 1rem;
-            margin-bottom: 2rem;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-
-        .details-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 1.5rem;
-            text-align: left;
-            margin-bottom: 2rem;
-            background: #f9fafb;
-            padding: 1.5rem;
-            border-radius: 12px;
-        }
-
-        .detail-item label {
-            display: block;
-            font-size: 0.875rem;
-            color: #718096;
-            margin-bottom: 0.25rem;
-        }
-
-        .detail-item span {
-            font-weight: 600;
-            color: #2d3748;
-        }
-
-        .upload-section {
-            border-top: 1px solid #e2e8f0;
-            padding-top: 2rem;
-        }
-
-        .upload-btn-wrapper {
-            position: relative;
-            overflow: hidden;
-            display: inline-block;
-        }
-
-        .btn {
-            border: 2px solid #10B981;
-            color: white;
-            background-color: #10B981;
-            padding: 8px 20px;
-            border-radius: 8px;
-            font-size: 1rem;
-            font-weight: bold;
-            cursor: pointer;
-            transition: all 0.3s;
-        }
-
-        .btn:hover {
-            background-color: #059669;
-            border-color: #059669;
-        }
-
-        .upload-btn-wrapper input[type=file] {
-            font-size: 100px;
-            position: absolute;
-            left: 0;
-            top: 0;
-            opacity: 0;
-            cursor: pointer;
-        }
-
-        .message {
-            margin-top: 1rem;
-            font-weight: 600;
-            height: 20px;
-        }
-
-        .message.success {
-            color: #10B981;
-        }
-
-        .message.error {
-            color: #EF4444;
-        }
-    </style>
+    <link rel="stylesheet" th:href="@{/css/design-system.css}" href="/css/design-system.css">
 </head>
 
 <body>
-    <div th:replace="fragments/doctor-navbar :: navbar"></div>
-
-    <div class="container">
-        <div class="card">
-            <div class="profile-img-container">
-                <img id="profileImg" src="/images/default-doctor.svg" alt="Doctor Profile" class="profile-img"
-                    onerror="handleDoctorImageError(this)">
-            </div>
-
-            <h2 id="docName">Loading...</h2>
-            <div class="specialization" id="docSpec">Loading...</div>
-
-            <div class="details-grid">
-                <div class="detail-item">
-                    <label>Email</label>
-                    <span id="docEmail">Loading...</span>
+    <!-- /* Redesigned: Doctor Profile â€” follows clinical design system v1 */ -->
+    <div class="app-shell">
+        <div th:replace="fragments/doctor-navbar :: navbar"></div>
+        <div class="app-main">
+            <header class="topbar">
+                <div class="topbar-title-group">
+                    <p class="breadcrumb">Doctor / Profile</p>
+                    <h1>Profile</h1>
                 </div>
-                <div class="detail-item">
-                    <label>License Number</label>
-                    <span id="docLicense">Loading...</span>
-                </div>
-                <div class="detail-item">
-                    <label>Experience</label>
-                    <span id="docExp">Loading... years</span>
-                </div>
-                <div class="detail-item">
-                    <label>Clinic ID</label>
-                    <span id="docClinic">Loading...</span>
-                </div>
-            </div>
+            </header>
 
-            <div class="upload-section">
-                <h3>Update Profile Photo</h3>
-                <p style="color: #718096; margin-bottom: 1rem; font-size: 0.875rem;">
-                    Supported formats: JPG, PNG. Max size: 2MB.
-                </p>
-
-                <form id="uploadForm" onsubmit="uploadPhoto(event)">
-                    <div class="upload-btn-wrapper">
-                        <button class="btn">Select & Upload Photo</button>
-                        <input type="file" name="file" id="photoInput" accept="image/*" onchange="uploadPhoto(event)">
+            <main class="page-content">
+                <section class="card">
+                    <div class="profile-hero">
+                        <img id="profileImg" src="/images/default-doctor.svg" alt="Doctor Profile" class="avatar-circle large" style="object-fit: cover;" onerror="handleDoctorImageError(this)">
+                        <div class="text-center">
+                            <h2 id="docName">Loading...</h2>
+                            <p class="section-copy" id="docSpec">Loading...</p>
+                        </div>
                     </div>
-                </form>
 
-                <div id="uploadMessage" class="message"></div>
-            </div>
+                    <div class="details-grid">
+                        <div class="detail-card"><label>Email</label><span id="docEmail">Loading...</span></div>
+                        <div class="detail-card"><label>License Number</label><span id="docLicense">Loading...</span></div>
+                        <div class="detail-card"><label>Experience</label><span id="docExp">Loading...</span></div>
+                        <div class="detail-card"><label>Clinic ID</label><span id="docClinic">Loading...</span></div>
+                    </div>
+
+                    <section style="margin-top: 24px;">
+                        <div class="section-header">
+                            <div>
+                                <h2>Update profile photo</h2>
+                                <p class="section-copy">Supported formats: JPG, PNG. Maximum size 2 MB.</p>
+                            </div>
+                        </div>
+                        <form id="uploadForm" onsubmit="uploadPhoto(event)" class="horizontal-actions">
+                            <input type="file" name="file" id="photoInput" accept="image/*" onchange="uploadPhoto(event)">
+                        </form>
+                        <div id="uploadMessage" class="helper-text" style="margin-top: 12px;"></div>
+                    </section>
+                </section>
+            </main>
         </div>
     </div>
 
@@ -199,7 +63,7 @@
 
         async function loadProfile() {
             const token = localStorage.getItem('jwtToken');
-            const doctorId = getUserIdFromToken(token); // Or from localStorage if you stored it separately
+            const doctorId = getUserIdFromToken(token);
 
             if (!token || !doctorId) {
                 window.location.href = '/login';
@@ -207,7 +71,6 @@
             }
 
             try {
-                // 1. Fetch Profile Details
                 const response = await fetch(`/api/doctor/${doctorId}/profile`, {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
@@ -215,22 +78,15 @@
                 if (!response.ok) throw new Error("Failed to load profile");
 
                 const profile = await response.json();
-
-                // 2. Fetch User Email (from Auth) if not stored. 
-                // Actually profile doesn't have email. We can get it from localStorage or Auth/me.
-                // Let's use localStorage for simplicity as it's set on login.
                 const email = localStorage.getItem('userEmail') || 'N/A';
 
-                // Update UI
                 document.getElementById('docName').innerText = profile.fullName;
                 document.getElementById('docSpec').innerText = profile.specialization;
                 document.getElementById('docEmail').innerText = email;
                 document.getElementById('docLicense').innerText = profile.licenseNumber;
                 document.getElementById('docExp').innerText = profile.experienceYears + " Years";
                 document.getElementById('docClinic').innerText = profile.clinicId;
-
                 document.getElementById('profileImg').src = getDoctorPhotoUrl(profile.profilePhotoUrl);
-
             } catch (error) {
                 console.error(error);
                 alert("Error loading profile data.");
@@ -249,7 +105,6 @@
             const msgDiv = document.getElementById('uploadMessage');
 
             msgDiv.innerText = "Uploading...";
-            msgDiv.className = "message";
 
             const formData = new FormData();
             formData.append("file", file);
@@ -257,58 +112,36 @@
             try {
                 const response = await fetch(`/api/doctor/${doctorId}/upload-photo`, {
                     method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${token}`
-                        // Do NOT set Content-Type header when sending FormData
-                    },
+                    headers: { 'Authorization': `Bearer ${token}` },
                     body: formData
                 });
 
                 if (!response.ok) throw new Error("Upload failed");
-
                 const result = await response.json();
-
-                // Update Image immediately
                 document.getElementById('profileImg').src = getDoctorPhotoUrl(result.url);
-
-                msgDiv.innerText = "Profile photo updated successfully!";
-                msgDiv.className = "message success";
-
+                msgDiv.innerText = "Profile photo updated successfully.";
             } catch (error) {
                 console.error(error);
                 msgDiv.innerText = "Failed to upload photo.";
-                msgDiv.className = "message error";
             }
         }
 
-        function getUserIdFromToken(token) {
-            // Decodes JWT directly to get userId (Subject or Claim)
-            // Or use stored userId from Login.
-            // Assuming Login stores 'userId' in localStorage.
-            // Let's check Login flow.
+        function getUserIdFromToken() {
             return localStorage.getItem('userId');
         }
 
         function getDoctorPhotoUrl(photoUrl) {
-            if (!photoUrl || !photoUrl.trim()) {
-                return DEFAULT_DOCTOR_IMAGE;
-            }
-
+            if (!photoUrl || !photoUrl.trim()) return DEFAULT_DOCTOR_IMAGE;
             return photoUrl.trim();
         }
 
         function handleDoctorImageError(img) {
-            if (img.dataset.fallbackApplied === 'true') {
-                return;
-            }
-
+            if (img.dataset.fallbackApplied === 'true') return;
             img.dataset.fallbackApplied = 'true';
             img.src = DEFAULT_DOCTOR_IMAGE;
         }
-
-        // Helper if userId not in local storage, try decoding token (basic middle part decode)
-        // For now relying on Login storing userId.
     </script>
 </body>
 
 </html>
+

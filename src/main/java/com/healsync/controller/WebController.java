@@ -57,11 +57,6 @@ public class WebController {
         return "admin/users";
     }
 
-    @GetMapping("/admin/tenants")
-    public String adminTenants() {
-        return "admin/tenants";
-    }
-
     @GetMapping("/profile")
     public String profile() {
         return "profile";
