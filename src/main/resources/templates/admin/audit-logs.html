@@ -72,6 +72,11 @@
                             </table>
                         </section>
                     </div>
+
+                    <div id="emptyState" class="empty-state" style="display: none;">
+                        <svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16"/></svg>
+                        <p>No audit logs found for the selected filters.</p>
+                    </div>
                 </div>
             </main>
         </div>
@@ -88,38 +93,71 @@
 
         document.getElementById('userEmail').textContent = userEmail || 'Admin';
 
+        const allLogs = [
+            { timestamp: '2026-01-24T12:05:30', user: 'admin@healsync.com', action: 'LOGIN', entityType: 'User', entityId: 1, ipAddress: '192.168.1.100' },
+            { timestamp: '2026-01-24T11:30:15', user: 'dr.smith@healsync.com', action: 'CREATE', entityType: 'Report', entityId: 5, ipAddress: '192.168.1.102' },
+            { timestamp: '2026-01-24T10:45:20', user: 'admin@healsync.com', action: 'UPDATE', entityType: 'Appointment', entityId: 12, ipAddress: '192.168.1.100' },
+            { timestamp: '2026-01-24T09:15:00', user: 'patient.john@example.com', action: 'CREATE', entityType: 'Appointment', entityId: 15, ipAddress: '192.168.1.105' },
+            { timestamp: '2026-01-24T08:30:45', user: 'admin@healsync.com', action: 'DELETE', entityType: 'Doctor', entityId: 3, ipAddress: '192.168.1.100' }
+        ];
+
         async function loadLogs() {
             document.getElementById('loadingState').style.display = 'grid';
             document.getElementById('logsTable').style.display = 'none';
+            document.getElementById('emptyState').style.display = 'none';
 
             setTimeout(() => {
-                const logs = [
-                    { timestamp: '2026-01-24 12:05:30', user: 'admin@healsync.com', action: 'LOGIN', entityType: 'User', entityId: 1, ipAddress: '192.168.1.100' },
-                    { timestamp: '2026-01-24 11:30:15', user: 'dr.smith@healsync.com', action: 'CREATE', entityType: 'Report', entityId: 5, ipAddress: '192.168.1.102' },
-                    { timestamp: '2026-01-24 10:45:20', user: 'admin@healsync.com', action: 'UPDATE', entityType: 'Appointment', entityId: 12, ipAddress: '192.168.1.100' },
-                    { timestamp: '2026-01-24 09:15:00', user: 'patient.john@example.com', action: 'CREATE', entityType: 'Appointment', entityId: 15, ipAddress: '192.168.1.105' },
-                    { timestamp: '2026-01-24 08:30:45', user: 'admin@healsync.com', action: 'CREATE', entityType: 'Doctor', entityId: 3, ipAddress: '192.168.1.100' }
-                ];
-
-                const tbody = document.getElementById('logsBody');
-                tbody.innerHTML = '';
-
-                logs.forEach(log => {
-                    tbody.innerHTML += `
-                        <tr>
-                            <td>${log.timestamp}</td>
-                            <td>${log.user}</td>
-                            <td><span class="status-badge status-${log.action.toLowerCase()}">${log.action}</span></td>
-                            <td>${log.entityType}</td>
-                            <td>#${log.entityId}</td>
-                            <td>${log.ipAddress}</td>
-                        </tr>
-                    `;
-                });
-
+                const filteredLogs = filterLogs(allLogs);
+                renderLogs(filteredLogs);
                 document.getElementById('loadingState').style.display = 'none';
-                document.getElementById('logsTable').style.display = 'block';
-            }, 500);
+            }, 0);
+        }
+
+        function filterLogs(logs) {
+            const actionFilterValue = (document.getElementById('filterAction').value || '').trim().toLowerCase();
+            const entityFilterValue = (document.getElementById('filterEntity').value || '').trim().toLowerCase();
+            const fromDateValue = document.getElementById('filterFromDate').value;
+            const fromDate = fromDateValue ? new Date(`${fromDateValue}T00:00:00`) : null;
+
+            return logs.filter(log => {
+                const actionValue = (log.action || '').trim().toLowerCase();
+                const entityValue = (log.entityType || '').trim().toLowerCase();
+                const logDate = new Date(log.timestamp);
+
+                const matchesAction = !actionFilterValue || actionValue === actionFilterValue;
+                const matchesEntity = !entityFilterValue || entityValue === entityFilterValue;
+                const matchesFromDate = !fromDate || logDate >= fromDate;
+
+                return matchesAction && matchesEntity && matchesFromDate;
+            });
+        }
+
+        function renderLogs(logs) {
+            const tbody = document.getElementById('logsBody');
+            tbody.innerHTML = '';
+
+            if (logs.length === 0) {
+                document.getElementById('logsTable').style.display = 'none';
+                document.getElementById('emptyState').style.display = 'grid';
+                return;
+            }
+
+            logs.forEach(log => {
+                const logDate = new Date(log.timestamp);
+                tbody.innerHTML += `
+                    <tr>
+                        <td>${logDate.toLocaleString()}</td>
+                        <td>${log.user}</td>
+                        <td><span class="status-badge status-${log.action.toLowerCase()}">${log.action}</span></td>
+                        <td>${log.entityType}</td>
+                        <td>#${log.entityId}</td>
+                        <td>${log.ipAddress}</td>
+                    </tr>
+                `;
+            });
+
+            document.getElementById('emptyState').style.display = 'none';
+            document.getElementById('logsTable').style.display = 'block';
         }
 
         loadLogs();

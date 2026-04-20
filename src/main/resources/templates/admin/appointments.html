@@ -99,44 +99,72 @@
 
         document.getElementById('userEmail').textContent = userEmail || 'Admin';
 
+        const allAppointments = [
+            { id: 1, patientName: 'John Doe', doctorName: 'Dr. Sarah Smith', startsAt: '2026-01-25T10:00:00', status: 'CONFIRMED', reason: 'Regular checkup' },
+            { id: 2, patientName: 'Jane Wilson', doctorName: 'Dr. Michael Johnson', startsAt: '2026-01-25T14:30:00', status: 'REQUESTED', reason: 'Follow-up consultation' },
+            { id: 3, patientName: 'Bob Smith', doctorName: 'Dr. Sarah Smith', startsAt: '2026-01-26T11:00:00', status: 'COMPLETED', reason: 'Annual physical' },
+            { id: 4, patientName: 'Ava Clark', doctorName: 'Dr. Emma Jones', startsAt: '2026-01-27T09:15:00', status: 'CANCELLED', reason: 'Dermatology review' }
+        ];
+
         async function loadAppointments() {
             document.getElementById('loadingState').style.display = 'grid';
             document.getElementById('appointmentsTable').style.display = 'none';
             document.getElementById('emptyState').style.display = 'none';
 
             setTimeout(() => {
-                const appointments = [
-                    { id: 1, patientName: 'John Doe', doctorName: 'Dr. Sarah Smith', dateTime: '2026-01-25 10:00 AM', status: 'CONFIRMED', reason: 'Regular checkup' },
-                    { id: 2, patientName: 'Jane Wilson', doctorName: 'Dr. Michael Johnson', dateTime: '2026-01-25 02:30 PM', status: 'REQUESTED', reason: 'Follow-up consultation' },
-                    { id: 3, patientName: 'Bob Smith', doctorName: 'Dr. Sarah Smith', dateTime: '2026-01-26 11:00 AM', status: 'COMPLETED', reason: 'Annual physical' }
-                ];
-
-                const tbody = document.getElementById('appointmentsBody');
-                tbody.innerHTML = '';
-
-                if (appointments.length === 0) {
-                    document.getElementById('loadingState').style.display = 'none';
-                    document.getElementById('emptyState').style.display = 'grid';
-                    return;
-                }
-
-                appointments.forEach(apt => {
-                    const statusClass = apt.status === 'REQUESTED' ? 'status-requested' : `status-${apt.status.toLowerCase()}`;
-                    tbody.innerHTML += `
-                        <tr>
-                            <td>#${apt.id}</td>
-                            <td>${apt.patientName}</td>
-                            <td>${apt.doctorName}</td>
-                            <td>${apt.dateTime}</td>
-                            <td><span class="status-badge ${statusClass}">${apt.status}</span></td>
-                            <td>${apt.reason}</td>
-                        </tr>
-                    `;
-                });
-
+                const filteredAppointments = filterAppointments(allAppointments);
+                renderAppointments(filteredAppointments);
                 document.getElementById('loadingState').style.display = 'none';
-                document.getElementById('appointmentsTable').style.display = 'block';
-            }, 500);
+            }, 0);
+        }
+
+        function filterAppointments(appointments) {
+            const statusFilterValue = (document.getElementById('filterStatus').value || '').trim().toLowerCase();
+            const fromDateValue = document.getElementById('filterFromDate').value;
+            const toDateValue = document.getElementById('filterToDate').value;
+
+            const fromDate = fromDateValue ? new Date(`${fromDateValue}T00:00:00`) : null;
+            const toDate = toDateValue ? new Date(`${toDateValue}T23:59:59`) : null;
+
+            return appointments.filter(apt => {
+                const appointmentDate = new Date(apt.startsAt);
+                const appointmentStatus = (apt.status || '').trim().toLowerCase();
+
+                const matchesStatus = !statusFilterValue || appointmentStatus === statusFilterValue;
+                const matchesFromDate = !fromDate || appointmentDate >= fromDate;
+                const matchesToDate = !toDate || appointmentDate <= toDate;
+
+                return matchesStatus && matchesFromDate && matchesToDate;
+            });
+        }
+
+        function renderAppointments(appointments) {
+            const tbody = document.getElementById('appointmentsBody');
+            tbody.innerHTML = '';
+
+            if (appointments.length === 0) {
+                document.getElementById('appointmentsTable').style.display = 'none';
+                document.getElementById('emptyState').style.display = 'grid';
+                return;
+            }
+
+            appointments.forEach(apt => {
+                const statusClass = apt.status === 'REQUESTED' ? 'status-requested' : `status-${apt.status.toLowerCase()}`;
+                const appointmentDate = new Date(apt.startsAt);
+                tbody.innerHTML += `
+                    <tr>
+                        <td>#${apt.id}</td>
+                        <td>${apt.patientName}</td>
+                        <td>${apt.doctorName}</td>
+                        <td>${appointmentDate.toLocaleString()}</td>
+                        <td><span class="status-badge ${statusClass}">${apt.status}</span></td>
+                        <td>${apt.reason}</td>
+                    </tr>
+                `;
+            });
+
+            document.getElementById('emptyState').style.display = 'none';
+            document.getElementById('appointmentsTable').style.display = 'block';
         }
 
         loadAppointments();
