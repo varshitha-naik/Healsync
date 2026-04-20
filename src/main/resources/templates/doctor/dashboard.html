@@ -9,7 +9,7 @@
 </head>
 
 <body>
-    <!-- /* Redesigned: Doctor Dashboard â€” follows clinical design system v1 */ -->
+    <!-- /* Redesigned: Doctor Dashboard - follows clinical design system v1 */ -->
     <div class="app-shell">
         <div th:replace="fragments/doctor-navbar :: navbar"></div>
         <div class="app-main">
@@ -17,9 +17,6 @@
                 <div class="topbar-title-group">
                     <p class="breadcrumb">Doctor / Dashboard</p>
                     <h1>Welcome back</h1>
-                </div>
-                <div class="topbar-actions">
-                    <button class="notification-button" type="button"><span class="notification-dot"></span><svg viewBox="0 0 24 24"><path d="M6 9a6 6 0 0 1 12 0c0 7 3 8 3 8H3s3-1 3-8"/><path d="M10 20a2 2 0 0 0 4 0"/></svg></button>
                 </div>
             </header>
 
@@ -31,57 +28,42 @@
 
                 <div id="dashboardContent" class="page-stack" style="display: none;">
                     <section class="banner">
-                        <h2>Thursday, April 16</h2>
-                        <p>Your next appointment begins at 10:00 AM with John Doe for a regular checkup.</p>
+                        <h2 id="todayDateLabel">Today</h2>
+                        <p id="nextAppointmentText">No upcoming appointments today.</p>
                     </section>
 
+                    <section id="availabilityReminder" class="banner" style="display: none; border-left-color: #d97706; background: #fffbeb;">
+                        <h2>Availability reminder</h2>
+                        <p id="availabilityReminderText">You have not set your availability for the next 3 days.</p>
+                        <div class="horizontal-actions">
+                            <a class="btn-primary" href="/doctor/availability">Set Availability</a>
+                            <a class="btn-secondary" href="/doctor/availability?mode=leave">Mark On Leave</a>
+                        </div>
+                    </section>
+                    <div id="availabilityOkBadge" style="display: none;">
+                        <span class="status-badge status-availability-open">Availability set for next 3 days</span>
+                    </div>
+
                     <section class="stats-grid">
-                        <article class="metric-card"><div class="metric-head"><span class="metric-icon"><svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16"/></svg></span><span class="metric-trend up">Today</span></div><span class="metric-label">Todayâ€™s appointments</span><span class="metric-value" id="todayCount">0</span></article>
+                        <article class="metric-card"><div class="metric-head"><span class="metric-icon"><svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16"/></svg></span><span class="metric-trend up">Today</span></div><span class="metric-label">Today's appointments</span><span class="metric-value" id="todayCount">0</span></article>
                         <article class="metric-card"><div class="metric-head"><span class="metric-icon"><svg viewBox="0 0 24 24"><path d="M7 4h10l3 3v13H7z"/><path d="M17 4v3h3"/></svg></span><span class="metric-trend down">Pending</span></div><span class="metric-label">Pending reviews</span><span class="metric-value" id="pendingCount">0</span></article>
-                        <article class="metric-card"><div class="metric-head"><span class="metric-icon"><svg viewBox="0 0 24 24"><path d="M4 8h16v10H4z"/><path d="m4 9 8 5 8-5"/></svg></span><span class="metric-trend up">Unread</span></div><span class="metric-label">New messages</span><span class="metric-value">4</span></article>
-                        <article class="metric-card"><div class="metric-head"><span class="metric-icon"><svg viewBox="0 0 24 24"><path d="m5 13 4 4L19 7"/></svg></span><span class="metric-trend up">Completed</span></div><span class="metric-label">Completed today</span><span class="metric-value">3</span></article>
+                        <article class="metric-card"><div class="metric-head"><span class="metric-icon"><svg viewBox="0 0 24 24"><path d="M4 8h16v10H4z"/><path d="m4 9 8 5 8-5"/></svg></span><span class="metric-trend up">Upcoming</span></div><span class="metric-label">Upcoming appointments</span><span class="metric-value" id="upcomingCount">0</span></article>
+                        <article class="metric-card"><div class="metric-head"><span class="metric-icon"><svg viewBox="0 0 24 24"><path d="m5 13 4 4L19 7"/></svg></span><span class="metric-trend up">Completed</span></div><span class="metric-label">Completed today</span><span class="metric-value" id="completedCount">0</span></article>
+                    </section>
+
+                    <section id="statsEmptyState" class="empty-state" style="display: none;">
+                        <p>No appointments or tasks scheduled yet.</p>
                     </section>
 
                     <section class="hero-layout">
                         <section class="card">
                             <div class="section-header">
                                 <div>
-                                    <h2>Todayâ€™s schedule</h2>
+                                    <h2>Today's schedule</h2>
                                     <p class="section-copy">A quick timeline view for the rest of your day.</p>
                                 </div>
                             </div>
-                            <div class="timeline">
-                                <div class="timeline-item">
-                                    <div class="timeline-time">10:00 AM</div>
-                                    <div class="timeline-card">
-                                        <div class="section-header" style="margin-bottom: 8px;">
-                                            <h3>John Doe</h3>
-                                            <span class="status-badge status-confirmed">Confirmed</span>
-                                        </div>
-                                        <p>Regular checkup</p>
-                                    </div>
-                                </div>
-                                <div class="timeline-item">
-                                    <div class="timeline-time">11:30 AM</div>
-                                    <div class="timeline-card">
-                                        <div class="section-header" style="margin-bottom: 8px;">
-                                            <h3>Priya Sharma</h3>
-                                            <span class="status-badge status-requested">Pending</span>
-                                        </div>
-                                        <p>Follow-up consultation</p>
-                                    </div>
-                                </div>
-                                <div class="timeline-item">
-                                    <div class="timeline-time">2:00 PM</div>
-                                    <div class="timeline-card">
-                                        <div class="section-header" style="margin-bottom: 8px;">
-                                            <h3>Mark Wilson</h3>
-                                            <span class="status-badge status-completed">Completed</span>
-                                        </div>
-                                        <p>Prescription review</p>
-                                    </div>
-                                </div>
-                            </div>
+                            <div id="todaySchedule" class="timeline"></div>
                         </section>
 
                         <aside class="card">
@@ -92,9 +74,9 @@
                                 </div>
                             </div>
                             <div class="history-list">
-                                <a class="history-card highlighted" href="/doctor/appointments"><h3>Open schedule</h3><p>Manage appointment status and notes.</p></a>
-                                <a class="history-card" href="/doctor/patients"><h3>Review patients</h3><p>Inspect recent visit history before rounds.</p></a>
-                                <a class="history-card" href="/doctor/availability"><h3>Update availability</h3><p>Keep future booking windows accurate.</p></a>
+                                <a class="history-card highlighted" href="/doctor/appointments" style="display: block;"><h3>Manage appointments</h3><p>Manage appointment status and notes.</p></a>
+                                <a class="history-card highlighted" href="/doctor/patients" style="display: block;"><h3>View patient history</h3><p>Inspect recent visit history before rounds.</p></a>
+                                <a class="history-card highlighted" href="/doctor/availability" style="display: block;"><h3>Update availability</h3><p>Keep future booking windows accurate.</p></a>
                             </div>
                         </aside>
                     </section>
@@ -102,6 +84,7 @@
             </main>
         </div>
     </div>
+    <div id="dashboardMessage" class="alert alert-danger" style="display: none;"></div>
 
     <script>
         const token = localStorage.getItem('jwtToken');
@@ -110,24 +93,133 @@
         if (!token) {
             window.location.href = '/login';
         } else if (userRole !== 'DOCTOR') {
-            alert('Access denied. Doctor role required.');
             window.location.href = '/login';
         } else {
             loadDashboard();
+            window.addEventListener('focus', loadDashboard);
         }
 
         async function loadDashboard() {
             try {
-                setTimeout(() => {
-                    document.getElementById('todayCount').textContent = '5';
-                    document.getElementById('pendingCount').textContent = '2';
-                    document.getElementById('loadingState').style.display = 'none';
-                    document.getElementById('dashboardContent').style.display = 'grid';
-                }, 500);
+                const meResponse = await fetch('/api/auth/me', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (!meResponse.ok) throw new Error('Failed to fetch user context');
+                const user = await meResponse.json();
+
+                const [summaryResponse, appointmentsResponse] = await Promise.all([
+                    fetch(`/api/doctor/dashboard-summary/${user.userId}`, {
+                        headers: { 'Authorization': `Bearer ${token}` }
+                    }),
+                    fetch(`/api/appointments/doctor/${user.userId}`, {
+                        headers: { 'Authorization': `Bearer ${token}` }
+                    })
+                ]);
+
+                if (!summaryResponse.ok || !appointmentsResponse.ok) {
+                    throw new Error('Failed to load dashboard data');
+                }
+
+                const summary = await summaryResponse.json();
+                const appointments = await appointmentsResponse.json();
+
+                document.getElementById('todayDateLabel').textContent = new Date().toLocaleDateString(undefined, {
+                    weekday: 'long', month: 'long', day: 'numeric'
+                });
+                document.getElementById('nextAppointmentText').textContent = summary.nextAppointmentSummary || 'No upcoming appointments today.';
+                document.getElementById('todayCount').textContent = summary.todaysAppointments ?? 0;
+                document.getElementById('pendingCount').textContent = summary.pendingAppointments ?? 0;
+                document.getElementById('upcomingCount').textContent = summary.upcomingAppointments ?? 0;
+                document.getElementById('completedCount').textContent = summary.completedToday ?? 0;
+                const statsTotal = (summary.todaysAppointments ?? 0) + (summary.pendingAppointments ?? 0) + (summary.upcomingAppointments ?? 0) + (summary.completedToday ?? 0);
+                document.getElementById('statsEmptyState').style.display = statsTotal === 0 ? 'grid' : 'none';
+
+                const reminder = document.getElementById('availabilityReminder');
+                const availabilityOkBadge = document.getElementById('availabilityOkBadge');
+                const reminderText = document.getElementById('availabilityReminderText');
+                if (summary.missingAvailabilityNext3Days) {
+                    const missingDays = (summary.missingAvailabilityDates || []).join(', ');
+                    reminderText.textContent = `You have not set your availability for the next 3 days. Missing dates: ${missingDays}`;
+                    reminder.style.display = 'grid';
+                    availabilityOkBadge.style.display = 'none';
+                } else {
+                    reminder.style.display = 'none';
+                    if (localStorage.getItem('doctorAvailabilityUpdated') === 'true') {
+                        availabilityOkBadge.style.display = 'block';
+                        setTimeout(() => {
+                            availabilityOkBadge.style.display = 'none';
+                            localStorage.removeItem('doctorAvailabilityUpdated');
+                        }, 5000);
+                    } else {
+                        availabilityOkBadge.style.display = 'block';
+                    }
+                }
+
+                renderTodaySchedule(appointments);
+                document.getElementById('loadingState').style.display = 'none';
+                document.getElementById('dashboardContent').style.display = 'grid';
+                showDashboardMessage('');
             } catch (error) {
                 console.error('Error loading dashboard:', error);
-                alert('Failed to load dashboard data');
+                showDashboardMessage('Failed to load dashboard data.');
             }
+        }
+
+        function renderTodaySchedule(appointments) {
+            const container = document.getElementById('todaySchedule');
+            const today = new Date();
+            const todaysAppointments = (appointments || [])
+                .filter(app => app.startDateTime)
+                .filter(app => {
+                    const dt = new Date(app.startDateTime);
+                    return dt.toDateString() === today.toDateString();
+                })
+                .sort((a, b) => new Date(a.startDateTime) - new Date(b.startDateTime));
+
+            if (todaysAppointments.length === 0) {
+                container.innerHTML = '<div class="empty-state"><p>No appointments scheduled for today.</p></div>';
+                return;
+            }
+
+            container.innerHTML = '';
+            todaysAppointments.forEach(app => {
+                const start = new Date(app.startDateTime);
+                const statusClass = app.status === 'REQUESTED' ? 'status-requested' : `status-${(app.status || '').toLowerCase()}`;
+                const item = document.createElement('div');
+                item.className = 'timeline-item';
+                item.innerHTML = `
+                    <div class="timeline-time">${start.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
+                    <div class="timeline-card">
+                        <div class="section-header" style="margin-bottom: 8px;">
+                            <h3>${escapeHtml(app.patientName || 'Patient')}</h3>
+                            <span class="status-badge ${statusClass}">${escapeHtml(app.status || '')}</span>
+                        </div>
+                        <p>${escapeHtml(app.reason || 'General consultation')}</p>
+                    </div>
+                `;
+                container.appendChild(item);
+            });
+        }
+
+        function escapeHtml(unsafe) {
+            if (!unsafe) return '';
+            return unsafe
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+        }
+
+        function showDashboardMessage(message, type = 'error') {
+            const el = document.getElementById('dashboardMessage');
+            if (!message) {
+                el.style.display = 'none';
+                return;
+            }
+            el.className = type === 'success' ? 'alert alert-success' : 'alert alert-danger';
+            el.textContent = message;
+            el.style.display = 'block';
         }
     </script>
 </body>

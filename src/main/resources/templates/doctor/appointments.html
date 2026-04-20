@@ -9,7 +9,7 @@
 </head>
 
 <body>
-    <!-- /* Redesigned: Doctor Appointments â€” follows clinical design system v1 */ -->
+    <!-- /* Redesigned: Doctor Appointments - follows clinical design system v1 */ -->
     <div class="app-shell">
         <div th:replace="fragments/doctor-navbar :: navbar"></div>
         <div class="app-main">
@@ -30,38 +30,10 @@
                     </section>
 
                     <section class="card">
-                        <div class="section-header">
-                            <div>
-                                <h2>Book appointment</h2>
-                                <p class="section-copy">Create a new appointment directly from your schedule.</p>
-                            </div>
-                        </div>
-                        <form id="bookingForm" onsubmit="bookAppointment(event)" class="form-grid">
-                            <input type="hidden" id="doctorId">
-                            <input type="hidden" id="patientId">
-                            <div class="field full">
-                                <label>Reason</label>
-                                <input type="text" id="reason">
-                            </div>
-                            <div class="field">
-                                <label>Start time</label>
-                                <input type="datetime-local" id="start" required>
-                            </div>
-                            <div class="field">
-                                <label>End time</label>
-                                <input type="datetime-local" id="end" required>
-                            </div>
-                            <div class="field full">
-                                <button type="submit" id="bookBtn" class="btn-primary">Book Appointment</button>
-                            </div>
-                        </form>
-                    </section>
-
-                    <section class="card">
                         <div class="filter-grid">
                             <div class="field">
                                 <label>Status filter</label>
-                                <select id="statusFilter" onchange="loadAppointments()">
+                                <select id="statusFilter" onchange="applyFilters()">
                                     <option value="">All statuses</option>
                                     <option value="REQUESTED">Requested</option>
                                     <option value="CONFIRMED">Confirmed</option>
@@ -69,8 +41,13 @@
                                     <option value="COMPLETED">Completed</option>
                                 </select>
                             </div>
-                            <div class="field" style="align-content: end;">
-                                <button class="btn-secondary" type="button" onclick="loadConfirmedOnly()">Show Confirmed Only</button>
+                            <div class="field">
+                                <label>From date</label>
+                                <input type="date" id="fromDateFilter" onchange="applyFilters()">
+                            </div>
+                            <div class="field">
+                                <label>To date</label>
+                                <input type="date" id="toDateFilter" onchange="applyFilters()">
                             </div>
                         </div>
                     </section>
@@ -120,6 +97,8 @@
 
     <script>
         const API_BASE = '/api/appointments';
+        let currentDoctorUserId = null;
+        let allAppointments = [];
 
         function getAuthHeaders() {
             const token = localStorage.getItem('jwtToken');
@@ -142,45 +121,9 @@
             el.style.display = 'block';
         }
 
-        async function bookAppointment(event) {
-            event.preventDefault();
-            const btn = document.getElementById('bookBtn');
-            const startVal = document.getElementById('start').value;
-            const endVal = document.getElementById('end').value;
-            if (new Date(startVal) >= new Date(endVal)) {
-                showError("Start time must be before end time");
-                return;
-            }
-
-            const doctorIdInput = document.getElementById('doctorId').value;
-            const doctorId = doctorIdInput ? Number(doctorIdInput) : 1;
-            const patientId = document.getElementById('patientId').value;
-            const payload = { clinicId: 1, doctorId: doctorId, patientId: Number(patientId), start: startVal + ":00", end: endVal + ":00", reason: document.getElementById('reason').value };
-
-            try {
-                btn.disabled = true;
-                btn.textContent = "Creating appointment...";
-                const response = await fetch(`${API_BASE}/book`, { method: "POST", headers: getAuthHeaders(), body: JSON.stringify(payload) });
-                if (!response.ok) {
-                    const err = await response.json().catch(() => ({}));
-                    throw new Error(err.message || "Booking failed");
-                }
-                showSuccess("Appointment booked successfully");
-                document.getElementById("bookingForm").reset();
-                await loadAppointments();
-            } catch (error) {
-                console.error(error);
-                showError(error.message);
-            } finally {
-                btn.disabled = false;
-                btn.textContent = "Book Appointment";
-            }
-        }
-
         async function loadAppointments() {
             const loadingIndicator = document.getElementById('loadingIndicator');
             const errorMessage = document.getElementById('errorMessage');
-            const statusFilter = document.getElementById('statusFilter').value;
             loadingIndicator.style.display = 'grid';
             document.getElementById('upcomingList').innerHTML = '';
             document.getElementById('pastList').innerHTML = '';
@@ -189,12 +132,8 @@
                 const meResponse = await fetch('/api/auth/me', { method: 'GET', headers: getAuthHeaders() });
                 if (!meResponse.ok) throw new Error('Failed to fetch user info. Please login again.');
                 const user = await meResponse.json();
-
-                const dInput = document.getElementById('doctorId');
-                if (dInput) { dInput.value = user.userId; dInput.disabled = true; }
-
-                let url = `${API_BASE}/doctor/${user.userId}`;
-                if (statusFilter) url += `?status=${statusFilter}`;
+                currentDoctorUserId = user.userId;
+                const url = `${API_BASE}/doctor/${user.userId}`;
 
                 const response = await fetch(url, { method: 'GET', headers: getAuthHeaders() });
                 if (!response.ok) {
@@ -202,9 +141,8 @@
                     throw new Error(errorData.message || 'Failed to load appointments');
                 }
 
-                const appointments = await response.json();
-                updateSummary(appointments);
-                renderAppointments(appointments);
+                allAppointments = await response.json();
+                applyFilters();
                 errorMessage.style.display = 'none';
             } catch (error) {
                 errorMessage.innerText = error.message;
@@ -212,6 +150,26 @@
             } finally {
                 loadingIndicator.style.display = 'none';
             }
+        }
+
+        function applyFilters() {
+            const statusFilter = (document.getElementById('statusFilter').value || '').trim().toUpperCase();
+            const fromDateValue = document.getElementById('fromDateFilter').value;
+            const toDateValue = document.getElementById('toDateFilter').value;
+            const fromDate = fromDateValue ? new Date(`${fromDateValue}T00:00:00`) : null;
+            const toDate = toDateValue ? new Date(`${toDateValue}T23:59:59`) : null;
+
+            const filtered = allAppointments.filter(app => {
+                if (!app.startDateTime) return false;
+                const appDate = new Date(app.startDateTime);
+                const matchesStatus = !statusFilter || (app.status || '').toUpperCase() === statusFilter;
+                const matchesFrom = !fromDate || appDate >= fromDate;
+                const matchesTo = !toDate || appDate <= toDate;
+                return matchesStatus && matchesFrom && matchesTo;
+            });
+
+            updateSummary(filtered);
+            renderAppointments(filtered);
         }
 
         function updateSummary(appointments) {
@@ -247,6 +205,8 @@
                     if (app.status === 'REQUESTED') actionsHtml += `<button class="btn-primary" onclick="confirmAppointment(${app.id})">Confirm</button>`;
                     else if (app.status === 'CONFIRMED') actionsHtml += `<button class="btn-secondary" onclick="completeAppointment(${app.id})">Complete</button>`;
                     if (app.status !== 'CANCELLED' && app.status !== 'COMPLETED') actionsHtml += `<button class="btn-destructive" onclick="cancelAppointment(${app.id})">Cancel</button>`;
+                    actionsHtml += `<button class="btn-secondary" onclick="openReportAction(${app.id}, ${app.patientId})">Report</button>`;
+                    actionsHtml += `<button class="btn-secondary" onclick="openPrescriptionAction(${app.id}, ${app.patientId})">Prescription</button>`;
 
                     const card = document.createElement('article');
                     card.className = 'history-card';
@@ -324,20 +284,6 @@
             } catch (error) { showError(error.message); }
         }
 
-        async function loadConfirmedOnly() {
-            try {
-                const meResponse = await fetch('/api/auth/me', { method: 'GET', headers: getAuthHeaders() });
-                if (!meResponse.ok) throw new Error("Failed to check user role");
-                const user = await meResponse.json();
-                const response = await fetch(`${API_BASE}/doctor/${user.userId}?status=CONFIRMED`, { method: 'GET', headers: getAuthHeaders() });
-                if (!response.ok) throw new Error("Failed to load confirmed appointments");
-                const appointments = await response.json();
-                updateSummary(appointments);
-                renderAppointments(appointments);
-                showSuccess(`Showing ${appointments.length} CONFIRMED appointments`);
-            } catch (error) { showError(error.message); }
-        }
-
         function showConfirm(message) {
             return new Promise((resolve) => {
                 const modal = document.getElementById("confirmModal");
@@ -346,6 +292,36 @@
                 document.getElementById("confirmYes").onclick = () => { modal.classList.add("hidden"); resolve(true); };
                 document.getElementById("confirmNo").onclick = () => { modal.classList.add("hidden"); resolve(false); };
             });
+        }
+
+        function openReportAction(appointmentId, patientProfileId) {
+            showSuccess(`Report action selected for appointment #${appointmentId}.`);
+        }
+
+        async function openPrescriptionAction(appointmentId, patientProfileId) {
+            if (!currentDoctorUserId) {
+                showError('Doctor context not loaded yet');
+                return;
+            }
+            const notes = prompt('Enter prescription notes for this consultation:');
+            if (notes === null) return;
+            try {
+                const response = await fetch('/api/prescriptions', {
+                    method: 'POST',
+                    headers: getAuthHeaders(),
+                    body: JSON.stringify({
+                        doctorId: currentDoctorUserId,
+                        patientId: patientProfileId,
+                        reportId: null,
+                        notes: notes,
+                        items: []
+                    })
+                });
+                if (!response.ok) throw new Error('Failed to create prescription');
+                showSuccess('Prescription action completed');
+            } catch (error) {
+                showError(error.message);
+            }
         }
 
         window.onload = loadAppointments;

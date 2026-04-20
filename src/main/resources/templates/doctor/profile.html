@@ -9,7 +9,7 @@
 </head>
 
 <body>
-    <!-- /* Redesigned: Doctor Profile â€” follows clinical design system v1 */ -->
+    <!-- /* Redesigned: Doctor Profile - follows clinical design system v1 */ -->
     <div class="app-shell">
         <div th:replace="fragments/doctor-navbar :: navbar"></div>
         <div class="app-main">
@@ -22,18 +22,46 @@
 
             <main class="page-content">
                 <section class="card">
+                    <div id="profileMessage" class="alert alert-success" style="display:none;"></div>
                     <div class="profile-hero">
                         <img id="profileImg" src="/images/default-doctor.svg" alt="Doctor Profile" class="avatar-circle large" style="object-fit: cover;" onerror="handleDoctorImageError(this)">
                         <div class="text-center">
                             <h2 id="docName">Loading...</h2>
                             <p class="section-copy" id="docSpec">Loading...</p>
                         </div>
+                        <div class="horizontal-actions">
+                            <button id="editProfileBtn" class="btn-secondary" type="button" onclick="enableEditMode()">Edit Profile</button>
+                            <button id="saveProfileBtn" class="btn-primary" type="button" onclick="saveProfile()" style="display:none;">Save</button>
+                            <button id="cancelProfileBtn" class="btn-secondary" type="button" onclick="cancelEditMode()" style="display:none;">Cancel</button>
+                        </div>
                     </div>
 
                     <div class="details-grid">
-                        <div class="detail-card"><label>Email</label><span id="docEmail">Loading...</span></div>
-                        <div class="detail-card"><label>License Number</label><span id="docLicense">Loading...</span></div>
-                        <div class="detail-card"><label>Experience</label><span id="docExp">Loading...</span></div>
+                        <div class="detail-card">
+                            <label>Name</label>
+                            <span id="docNameDisplay">Loading...</span>
+                            <input id="docNameInput" type="text" style="display:none;">
+                        </div>
+                        <div class="detail-card">
+                            <label>Specialization</label>
+                            <span id="docSpecDisplay">Loading...</span>
+                            <input id="docSpecInput" type="text" style="display:none;">
+                        </div>
+                        <div class="detail-card">
+                            <label>Email</label>
+                            <span id="docEmail">Loading...</span>
+                            <input id="docEmailInput" type="email" style="display:none;">
+                        </div>
+                        <div class="detail-card">
+                            <label>License Number</label>
+                            <span id="docLicense">Loading...</span>
+                            <input id="docLicenseInput" type="text" style="display:none;">
+                        </div>
+                        <div class="detail-card">
+                            <label>Experience</label>
+                            <span id="docExp">Loading...</span>
+                            <input id="docExpInput" type="number" min="0" style="display:none;">
+                        </div>
                         <div class="detail-card"><label>Clinic ID</label><span id="docClinic">Loading...</span></div>
                     </div>
 
@@ -55,6 +83,9 @@
     </div>
 
     <script>
+        let profileData = null;
+        let isEditMode = false;
+
         document.addEventListener("DOMContentLoaded", () => {
             loadProfile();
         });
@@ -79,17 +110,21 @@
 
                 const profile = await response.json();
                 const email = localStorage.getItem('userEmail') || 'N/A';
+                profileData = { ...profile, email: email };
 
-                document.getElementById('docName').innerText = profile.fullName;
-                document.getElementById('docSpec').innerText = profile.specialization;
+                document.getElementById('docName').innerText = profile.fullName || 'N/A';
+                document.getElementById('docSpec').innerText = profile.specialization || 'N/A';
+                document.getElementById('docNameDisplay').innerText = profile.fullName || 'N/A';
+                document.getElementById('docSpecDisplay').innerText = profile.specialization || 'N/A';
                 document.getElementById('docEmail').innerText = email;
-                document.getElementById('docLicense').innerText = profile.licenseNumber;
-                document.getElementById('docExp').innerText = profile.experienceYears + " Years";
+                document.getElementById('docLicense').innerText = profile.licenseNumber || 'N/A';
+                document.getElementById('docExp').innerText = (profile.experienceYears ?? 0) + " Years";
                 document.getElementById('docClinic').innerText = profile.clinicId;
                 document.getElementById('profileImg').src = getDoctorPhotoUrl(profile.profilePhotoUrl);
+                syncInputsFromProfile();
             } catch (error) {
                 console.error(error);
-                alert("Error loading profile data.");
+                showProfileMessage("Error loading profile data.", "error");
             }
         }
 
@@ -119,9 +154,11 @@
                 if (!response.ok) throw new Error("Upload failed");
                 const result = await response.json();
                 document.getElementById('profileImg').src = getDoctorPhotoUrl(result.url);
+                msgDiv.className = 'alert alert-success';
                 msgDiv.innerText = "Profile photo updated successfully.";
             } catch (error) {
                 console.error(error);
+                msgDiv.className = 'alert alert-danger';
                 msgDiv.innerText = "Failed to upload photo.";
             }
         }
@@ -139,6 +176,96 @@
             if (img.dataset.fallbackApplied === 'true') return;
             img.dataset.fallbackApplied = 'true';
             img.src = DEFAULT_DOCTOR_IMAGE;
+        }
+
+        function enableEditMode() {
+            isEditMode = true;
+            toggleProfileEditUI(true);
+        }
+
+        function cancelEditMode() {
+            isEditMode = false;
+            syncInputsFromProfile();
+            toggleProfileEditUI(false);
+            showProfileMessage("", "success");
+        }
+
+        function toggleProfileEditUI(editMode) {
+            document.getElementById('editProfileBtn').style.display = editMode ? 'none' : 'inline-flex';
+            document.getElementById('saveProfileBtn').style.display = editMode ? 'inline-flex' : 'none';
+            document.getElementById('cancelProfileBtn').style.display = editMode ? 'inline-flex' : 'none';
+
+            document.getElementById('docNameDisplay').style.display = editMode ? 'none' : 'inline';
+            document.getElementById('docSpecDisplay').style.display = editMode ? 'none' : 'inline';
+            document.getElementById('docEmail').style.display = editMode ? 'none' : 'inline';
+            document.getElementById('docLicense').style.display = editMode ? 'none' : 'inline';
+            document.getElementById('docExp').style.display = editMode ? 'none' : 'inline';
+
+            document.getElementById('docNameInput').style.display = editMode ? 'block' : 'none';
+            document.getElementById('docSpecInput').style.display = editMode ? 'block' : 'none';
+            document.getElementById('docEmailInput').style.display = editMode ? 'block' : 'none';
+            document.getElementById('docLicenseInput').style.display = editMode ? 'block' : 'none';
+            document.getElementById('docExpInput').style.display = editMode ? 'block' : 'none';
+        }
+
+        function syncInputsFromProfile() {
+            if (!profileData) return;
+            document.getElementById('docNameInput').value = profileData.fullName || '';
+            document.getElementById('docSpecInput').value = profileData.specialization || '';
+            document.getElementById('docEmailInput').value = profileData.email || '';
+            document.getElementById('docLicenseInput').value = profileData.licenseNumber || '';
+            document.getElementById('docExpInput').value = profileData.experienceYears ?? 0;
+        }
+
+        async function saveProfile() {
+            const token = localStorage.getItem('jwtToken');
+            const doctorId = getUserIdFromToken(token);
+            const payload = {
+                fullName: document.getElementById('docNameInput').value.trim(),
+                specialization: document.getElementById('docSpecInput').value.trim(),
+                email: document.getElementById('docEmailInput').value.trim(),
+                licenseNumber: document.getElementById('docLicenseInput').value.trim(),
+                experienceYears: parseInt(document.getElementById('docExpInput').value || '0', 10)
+            };
+
+            if (!payload.fullName || !payload.specialization || !payload.email || !payload.licenseNumber) {
+                showProfileMessage("Please fill all profile fields before saving.", "error");
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/doctor/${doctorId}/profile`, {
+                    method: 'PUT',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(payload)
+                });
+                if (!response.ok) throw new Error("Failed to update profile");
+                localStorage.setItem('userEmail', payload.email);
+                showProfileMessage("Profile updated successfully.", "success");
+                await loadProfile();
+                isEditMode = false;
+                toggleProfileEditUI(false);
+            } catch (error) {
+                console.error(error);
+                showProfileMessage("Failed to update profile.", "error");
+            }
+        }
+
+        function showProfileMessage(message, type = "success") {
+            const el = document.getElementById('profileMessage');
+            if (!message) {
+                el.style.display = 'none';
+                return;
+            }
+            el.className = type === 'success' ? 'alert alert-success' : 'alert alert-danger';
+            el.textContent = message;
+            el.style.display = 'block';
+            setTimeout(() => {
+                el.style.display = 'none';
+            }, 5000);
         }
     </script>
 </body>

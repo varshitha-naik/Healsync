@@ -1,10 +1,15 @@
 package com.healsync.controller;
 
 import com.healsync.dto.AvailabilityRequest;
+import com.healsync.dto.DoctorDashboardSummaryDTO;
+import com.healsync.dto.DoctorLeaveRequest;
+import com.healsync.dto.DoctorProfileUpdateRequest;
 import com.healsync.entity.DoctorAvailability;
+import com.healsync.entity.User;
 import com.healsync.service.DoctorService;
 import com.healsync.service.FileStorageService;
 import com.healsync.repository.DoctorProfileRepository;
+import com.healsync.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.multipart.MultipartFile;
 import com.healsync.entity.DoctorProfile;
@@ -21,6 +26,7 @@ public class DoctorController {
     private final DoctorService doctorService;
     private final FileStorageService fileStorageService;
     private final DoctorProfileRepository doctorProfileRepository;
+    private final UserRepository userRepository;
 
     @GetMapping("/{doctorId}/patients")
     public ResponseEntity<?> getPatients(@PathVariable Long doctorId) {
@@ -49,6 +55,31 @@ public class DoctorController {
     public ResponseEntity<?> deleteAvailability(@PathVariable Long id) {
         doctorService.deleteAvailability(id);
         return ResponseEntity.ok().build();
+    }
+
+    @PostMapping("/leave")
+    public ResponseEntity<?> addLeave(@RequestBody DoctorLeaveRequest request) {
+        return ResponseEntity.ok(doctorService.addLeave(
+                request.getDoctorId(),
+                request.getFromDate(),
+                request.getToDate(),
+                request.getReason()));
+    }
+
+    @GetMapping("/leave/{doctorId}")
+    public ResponseEntity<?> getLeaves(@PathVariable Long doctorId) {
+        return ResponseEntity.ok(doctorService.getLeaves(doctorId));
+    }
+
+    @DeleteMapping("/leave/{id}")
+    public ResponseEntity<?> deleteLeave(@PathVariable Long id) {
+        doctorService.deleteLeave(id);
+        return ResponseEntity.ok().build();
+    }
+
+    @GetMapping("/dashboard-summary/{doctorId}")
+    public ResponseEntity<DoctorDashboardSummaryDTO> getDashboardSummary(@PathVariable Long doctorId) {
+        return ResponseEntity.ok(doctorService.getDoctorDashboardSummary(doctorId));
     }
 
     @PostMapping("/{doctorId}/upload-photo")
@@ -91,5 +122,39 @@ public class DoctorController {
         response.put("updatedAt", profile.getUpdatedAt());
 
         return ResponseEntity.ok(response);
+    }
+
+    @PutMapping("/{doctorId}/profile")
+    public ResponseEntity<?> updateProfile(@PathVariable Long doctorId, @RequestBody DoctorProfileUpdateRequest request) {
+        DoctorProfile profile = doctorProfileRepository.findByUserId(doctorId)
+                .orElseThrow(() -> new RuntimeException("Doctor profile not found"));
+        User user = userRepository.findById(doctorId)
+                .orElseThrow(() -> new RuntimeException("Doctor user not found"));
+
+        if (request.getFullName() != null && !request.getFullName().isBlank()) {
+            profile.setFullName(request.getFullName().trim());
+        }
+        if (request.getSpecialization() != null && !request.getSpecialization().isBlank()) {
+            profile.setSpecialization(request.getSpecialization().trim());
+        }
+        if (request.getExperienceYears() != null && request.getExperienceYears() >= 0) {
+            profile.setExperienceYears(request.getExperienceYears());
+        }
+        if (request.getLicenseNumber() != null && !request.getLicenseNumber().isBlank()) {
+            profile.setLicenseNumber(request.getLicenseNumber().trim());
+        }
+        if (request.getEmail() != null && !request.getEmail().isBlank()) {
+            user.setEmail(request.getEmail().trim());
+            userRepository.save(user);
+        }
+
+        DoctorProfile saved = doctorProfileRepository.save(profile);
+        return ResponseEntity.ok(Map.of(
+                "message", "Profile updated successfully",
+                "fullName", saved.getFullName(),
+                "specialization", saved.getSpecialization(),
+                "experienceYears", saved.getExperienceYears(),
+                "licenseNumber", saved.getLicenseNumber(),
+                "email", user.getEmail()));
     }
 }

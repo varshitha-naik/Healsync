@@ -6,6 +6,7 @@ import com.healsync.entity.PatientProfile;
 import com.healsync.enums.AppointmentStatus;
 import com.healsync.enums.UserRole;
 import com.healsync.repository.AppointmentRepository;
+import com.healsync.repository.DoctorLeaveRepository;
 import com.healsync.repository.DoctorProfileRepository;
 import com.healsync.repository.PatientProfileRepository;
 import com.healsync.repository.UserRepository;
@@ -27,6 +28,7 @@ public class AppointmentService {
     private final AppointmentRepository appointmentRepository;
     private final PatientProfileRepository patientProfileRepository;
     private final DoctorProfileRepository doctorProfileRepository;
+    private final DoctorLeaveRepository doctorLeaveRepository;
     private final UserRepository userRepository;
     private final EmailService emailService;
 
@@ -64,6 +66,11 @@ public class AppointmentService {
                     .findBySpecialization(specialization);
 
             for (com.healsync.entity.DoctorProfile doc : doctors) {
+                boolean onLeave = doctorLeaveRepository.existsByDoctorIdAndFromDateLessThanEqualAndToDateGreaterThanEqual(
+                        doc.getUserId(), start.toLocalDate(), start.toLocalDate());
+                if (onLeave) {
+                    continue;
+                }
                 // Check availability using Profile ID
                 boolean overlap = appointmentRepository.existsOverlappingAppointment(doc.getId(), start, end);
                 if (!overlap) {
@@ -80,6 +87,12 @@ public class AppointmentService {
             // Must resolve to Profile ID
             com.healsync.entity.DoctorProfile docProfile = doctorProfileRepository.findByUserId(doctorId)
                     .orElseThrow(() -> new RuntimeException("Doctor profile not found for user ID: " + doctorId));
+
+            boolean onLeave = doctorLeaveRepository.existsByDoctorIdAndFromDateLessThanEqualAndToDateGreaterThanEqual(
+                    doctorId, start.toLocalDate(), start.toLocalDate());
+            if (onLeave) {
+                throw new RuntimeException("Doctor is on leave for the selected date.");
+            }
 
             finalDoctorProfileId = docProfile.getId(); // Assign Profile ID
 

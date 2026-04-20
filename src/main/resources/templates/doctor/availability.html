@@ -9,7 +9,7 @@
 </head>
 
 <body>
-    <!-- /* Redesigned: Doctor Availability â€” follows clinical design system v1 */ -->
+    <!-- /* Redesigned: Doctor Availability - follows clinical design system v1 */ -->
     <div class="app-shell">
         <div th:replace="fragments/doctor-navbar :: navbar"></div>
         <div class="app-main">
@@ -54,9 +54,37 @@
                             </div>
                             <button type="submit" class="btn-primary">Add Slot</button>
                         </form>
+                        <div id="availabilityMessage" class="alert alert-success" style="display:none; margin-top: 12px;"></div>
+
+                        <hr style="border: 0; border-top: 1px solid var(--color-border); margin: 20px 0;">
+
+                        <div class="section-header">
+                            <div>
+                                <h2>Mark on leave</h2>
+                                <p class="section-copy">Block booking for a date range.</p>
+                            </div>
+                        </div>
+                        <form id="leaveForm" onsubmit="markOnLeave(event)" class="page-stack">
+                            <div class="form-grid">
+                                <div class="field">
+                                    <label>From date</label>
+                                    <input type="date" id="leaveFromDate" required>
+                                </div>
+                                <div class="field">
+                                    <label>To date</label>
+                                    <input type="date" id="leaveToDate" required>
+                                </div>
+                            </div>
+                            <div class="field">
+                                <label>Reason (optional)</label>
+                                <textarea id="leaveReason" rows="2" placeholder="Optional leave reason"></textarea>
+                            </div>
+                            <button type="submit" class="btn-secondary">Mark On Leave</button>
+                        </form>
+                        <div id="leaveMessage" class="alert alert-success" style="display:none; margin-top: 12px;"></div>
                     </section>
 
-                    <section class="table-card">
+                    <section class="table-card page-stack">
                         <div class="section-header" style="padding: 20px 24px 0;">
                             <div>
                                 <h2>Current schedule</h2>
@@ -73,6 +101,26 @@
                                 </tr>
                             </thead>
                             <tbody id="slotsBody">
+                                <tr><td colspan="4">Loading...</td></tr>
+                            </tbody>
+                        </table>
+
+                        <div class="section-header" style="padding: 0 24px;">
+                            <div>
+                                <h2>On leave dates</h2>
+                                <p class="section-copy">These dates are excluded from bookings.</p>
+                            </div>
+                        </div>
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>From date</th>
+                                    <th>To date</th>
+                                    <th>Reason</th>
+                                    <th class="actions-cell">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="leaveBody">
                                 <tr><td colspan="4">Loading...</td></tr>
                             </tbody>
                         </table>
@@ -106,6 +154,14 @@
                 const user = await meRes.json();
                 currentUserId = user.userId;
                 loadSlots();
+                const params = new URLSearchParams(window.location.search);
+                if (params.get('mode') === 'leave') {
+                    const leaveFrom = document.getElementById('leaveFromDate');
+                    if (leaveFrom) {
+                        leaveFrom.focus();
+                        leaveFrom.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }
+                }
             } catch (e) {
                 console.error(e);
             }
@@ -113,32 +169,94 @@
 
         async function loadSlots() {
             const token = localStorage.getItem('jwtToken');
-            const res = await fetch(`${API_BASE}/availability/${currentUserId}`, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            const slots = await res.json();
+            const [availabilityRes, leaveRes] = await Promise.all([
+                fetch(`${API_BASE}/availability/${currentUserId}`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                }),
+                fetch(`${API_BASE}/leave/${currentUserId}`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                })
+            ]);
+            const slots = await availabilityRes.json();
+            const leaves = await leaveRes.json();
 
             const tbody = document.getElementById('slotsBody');
             tbody.innerHTML = '';
 
             if (slots.length === 0) {
                 tbody.innerHTML = '<tr><td colspan="4" class="text-center">No slots added.</td></tr>';
+            } else {
+                const days = { MONDAY: 1, TUESDAY: 2, WEDNESDAY: 3, THURSDAY: 4, FRIDAY: 5, SATURDAY: 6, SUNDAY: 7 };
+                slots.sort((a, b) => days[a.dayOfWeek] - days[b.dayOfWeek] || a.startTime.localeCompare(b.startTime));
+
+                slots.forEach(s => {
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td>${s.dayOfWeek}</td>
+                        <td>${s.startTime}</td>
+                        <td>${s.endTime}</td>
+                        <td class="actions-cell"><button class="btn-destructive" onclick="deleteSlot(${s.id})">Delete</button></td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            }
+
+            const leaveBody = document.getElementById('leaveBody');
+            leaveBody.innerHTML = '';
+            if (!leaves || leaves.length === 0) {
+                leaveBody.innerHTML = '<tr><td colspan="4" class="text-center">No leave dates added.</td></tr>';
+                return;
+            }
+            leaves.forEach(leave => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${leave.fromDate}</td>
+                    <td>${leave.toDate}</td>
+                    <td>${leave.reason ? leave.reason : '-'}</td>
+                    <td class="actions-cell"><button class="btn-destructive" onclick="deleteLeave(${leave.id})">Remove</button></td>
+                `;
+                leaveBody.appendChild(tr);
+            });
+        }
+
+        async function markOnLeave(event) {
+            event.preventDefault();
+            const token = localStorage.getItem('jwtToken');
+            const fromDate = document.getElementById('leaveFromDate').value;
+            const toDate = document.getElementById('leaveToDate').value;
+            const reason = document.getElementById('leaveReason').value;
+
+            if (!fromDate || !toDate) {
+                showInlineMessage('leaveMessage', "Please select both dates", 'error');
+                return;
+            }
+            if (new Date(toDate) < new Date(fromDate)) {
+                showInlineMessage('leaveMessage', "To date must be on or after from date", 'error');
                 return;
             }
 
-            const days = { MONDAY: 1, TUESDAY: 2, WEDNESDAY: 3, THURSDAY: 4, FRIDAY: 5, SATURDAY: 6, SUNDAY: 7 };
-            slots.sort((a, b) => days[a.dayOfWeek] - days[b.dayOfWeek] || a.startTime.localeCompare(b.startTime));
+            const payload = {
+                doctorId: currentUserId,
+                fromDate: fromDate,
+                toDate: toDate,
+                reason: reason
+            };
 
-            slots.forEach(s => {
-                const tr = document.createElement('tr');
-                tr.innerHTML = `
-                    <td>${s.dayOfWeek}</td>
-                    <td>${s.startTime}</td>
-                    <td>${s.endTime}</td>
-                    <td class="actions-cell"><button class="btn-destructive" onclick="deleteSlot(${s.id})">Delete</button></td>
-                `;
-                tbody.appendChild(tr);
+            const postRes = await fetch(`${API_BASE}/leave`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                body: JSON.stringify(payload)
             });
+            if (!postRes.ok) {
+                const txt = await postRes.text();
+                showInlineMessage('leaveMessage', "Failed to mark leave: " + txt, 'error');
+                return;
+            }
+
+            document.getElementById('leaveForm').reset();
+            localStorage.setItem('doctorAvailabilityUpdated', 'true');
+            showInlineMessage('leaveMessage', "Leave recorded successfully. Patient bookings will be blocked for the selected dates.", 'success');
+            loadSlots();
         }
 
         async function addAvailability(e) {
@@ -148,13 +266,13 @@
             const eTime = document.getElementById('endTime').value;
 
             if (sTime >= eTime) {
-                alert("Start time must be before End time");
+                showInlineMessage('availabilityMessage', "Start time must be before end time", 'error');
                 return;
             }
 
             const selectedDays = [...document.querySelectorAll('input[name=day]:checked')].map(c => c.value);
             if (selectedDays.length === 0) {
-                alert("Please select at least one day");
+                showInlineMessage('availabilityMessage', "Please select at least one day", 'error');
                 return;
             }
 
@@ -168,15 +286,17 @@
                 });
 
                 if (res.ok) {
+                    localStorage.setItem('doctorAvailabilityUpdated', 'true');
+                    showInlineMessage('availabilityMessage', "Availability added successfully for selected days.", 'success');
                     loadSlots();
                     document.querySelectorAll('input[type=checkbox]').forEach(c => c.checked = false);
                 } else {
                     const txt = await res.text();
-                    alert("Failed to add slot: " + txt);
+                    showInlineMessage('availabilityMessage', "Failed to add slot: " + txt, 'error');
                 }
             } catch (err) {
                 console.error(err);
-                alert("Error connecting to server");
+                showInlineMessage('availabilityMessage', "Error connecting to server", 'error');
             }
         }
 
@@ -200,6 +320,41 @@
             const token = localStorage.getItem('jwtToken');
             await fetch(`${API_BASE}/availability/${id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } });
             loadSlots();
+        }
+
+        async function deleteLeave(id) {
+            if (!(await showConfirm("Remove this leave entry?"))) return;
+            const token = localStorage.getItem('jwtToken');
+
+            try {
+                const response = await fetch(`${API_BASE}/leave/${id}`, {
+                    method: 'DELETE',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    showInlineMessage('leaveMessage', `Failed to remove leave entry: ${errorText}`, 'error');
+                    return;
+                }
+
+                localStorage.setItem('doctorAvailabilityUpdated', 'true');
+                showInlineMessage('leaveMessage', "Leave entry removed successfully.", 'success');
+                loadSlots();
+            } catch (error) {
+                console.error(error);
+                showInlineMessage('leaveMessage', "Failed to remove leave entry. Please try again.", 'error');
+            }
+        }
+
+        function showInlineMessage(elementId, message, type = 'success') {
+            const el = document.getElementById(elementId);
+            if (!el) return;
+            el.className = type === 'success' ? 'alert alert-success' : 'alert alert-danger';
+            el.textContent = message;
+            el.style.display = 'block';
+            setTimeout(() => {
+                el.style.display = 'none';
+            }, 5000);
         }
 
         window.onload = init;

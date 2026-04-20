@@ -4,7 +4,9 @@ import com.healsync.dto.DoctorPatientDTO;
 import com.healsync.dto.AdminDashboardSummaryDTO;
 import com.healsync.dto.AdminPatientAppointmentDTO;
 import com.healsync.dto.AdminPatientsByDoctorDTO;
+import com.healsync.dto.DoctorDashboardSummaryDTO;
 import com.healsync.entity.DoctorAvailability;
+import com.healsync.entity.DoctorLeave;
 import com.healsync.entity.Appointment;
 import com.healsync.entity.PatientProfile;
 import com.healsync.entity.User;
@@ -19,6 +21,7 @@ import com.healsync.enums.AppointmentStatus;
 import com.healsync.repository.AppointmentRepository;
 import com.healsync.repository.ClinicRepository;
 import com.healsync.repository.DoctorAvailabilityRepository;
+import com.healsync.repository.DoctorLeaveRepository;
 import com.healsync.repository.DoctorProfileRepository;
 import com.healsync.repository.PatientProfileRepository;
 import com.healsync.repository.UserRepository;
@@ -28,6 +31,7 @@ import org.springframework.stereotype.Service;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
@@ -44,6 +48,7 @@ public class DoctorService {
     private final PatientProfileRepository patientProfileRepository;
     private final UserRepository userRepository;
     private final DoctorAvailabilityRepository doctorAvailabilityRepository;
+    private final DoctorLeaveRepository doctorLeaveRepository;
     private final DoctorProfileRepository doctorProfileRepository;
     private final ClinicRepository clinicRepository;
     private final FileStorageService fileStorageService;
@@ -259,12 +264,99 @@ public class DoctorService {
         return doctorAvailabilityRepository.findByDoctorId(doctorId);
     }
 
+    public List<DoctorLeave> getLeaves(Long doctorId) {
+        return doctorLeaveRepository.findByDoctorIdOrderByFromDateAsc(doctorId);
+    }
+
     public DoctorAvailability addAvailability(DoctorAvailability availability) {
         return doctorAvailabilityRepository.save(availability);
     }
 
+    public DoctorLeave addLeave(Long doctorId, LocalDate fromDate, LocalDate toDate, String reason) {
+        if (fromDate == null || toDate == null) {
+            throw new RuntimeException("From date and to date are required.");
+        }
+        if (toDate.isBefore(fromDate)) {
+            throw new RuntimeException("To date must be on or after from date.");
+        }
+
+        DoctorLeave leave = new DoctorLeave();
+        leave.setDoctorId(doctorId);
+        leave.setFromDate(fromDate);
+        leave.setToDate(toDate);
+        leave.setReason(reason);
+        return doctorLeaveRepository.save(leave);
+    }
+
     public void deleteAvailability(Long id) {
         doctorAvailabilityRepository.deleteById(id);
+    }
+
+    public void deleteLeave(Long id) {
+        doctorLeaveRepository.deleteById(id);
+    }
+
+    public boolean isDoctorOnLeave(Long doctorId, LocalDate date) {
+        return doctorLeaveRepository.existsByDoctorIdAndFromDateLessThanEqualAndToDateGreaterThanEqual(doctorId, date, date);
+    }
+
+    public DoctorDashboardSummaryDTO getDoctorDashboardSummary(Long doctorUserId) {
+        LocalDate today = LocalDate.now();
+        LocalDateTime now = LocalDateTime.now();
+        DoctorProfile profile = doctorProfileRepository.findByUserId(doctorUserId)
+                .orElseThrow(() -> new RuntimeException("Doctor profile not found"));
+
+        List<Appointment> appointments = appointmentRepository.findByDoctorId(profile.getId());
+        long todaysAppointments = appointments.stream()
+                .filter(a -> a.getStartDateTime() != null && a.getStartDateTime().toLocalDate().isEqual(today))
+                .count();
+        long pendingAppointments = appointments.stream()
+                .filter(a -> a.getStatus() == AppointmentStatus.REQUESTED)
+                .count();
+        long completedToday = appointments.stream()
+                .filter(a -> a.getStartDateTime() != null && a.getStartDateTime().toLocalDate().isEqual(today))
+                .filter(a -> a.getStatus() == AppointmentStatus.COMPLETED)
+                .count();
+        long upcomingAppointments = appointments.stream()
+                .filter(a -> a.getStartDateTime() != null && a.getStartDateTime().isAfter(now))
+                .filter(a -> a.getStatus() == AppointmentStatus.REQUESTED || a.getStatus() == AppointmentStatus.CONFIRMED)
+                .count();
+
+        Appointment nextAppointment = appointments.stream()
+                .filter(a -> a.getStartDateTime() != null && a.getStartDateTime().isAfter(now))
+                .filter(a -> a.getStatus() == AppointmentStatus.REQUESTED || a.getStatus() == AppointmentStatus.CONFIRMED)
+                .min(Comparator.comparing(Appointment::getStartDateTime))
+                .orElse(null);
+
+        String nextAppointmentSummary = "No upcoming appointments today.";
+        if (nextAppointment != null) {
+            String patientName = patientProfileRepository.findById(nextAppointment.getPatientId())
+                    .map(PatientProfile::getFullName)
+                    .orElse("Patient");
+            nextAppointmentSummary = "Next: " + patientName + " at " + nextAppointment.getStartDateTime().format(DateTimeFormatter.ofPattern("hh:mm a"));
+        }
+
+        List<String> missingDates = new ArrayList<>();
+        List<DoctorAvailability> weeklyAvailability = doctorAvailabilityRepository.findByDoctorId(doctorUserId);
+        for (int i = 0; i < 3; i++) {
+            LocalDate date = today.plusDays(i);
+            boolean onLeave = isDoctorOnLeave(doctorUserId, date);
+            boolean hasAvailability = weeklyAvailability.stream()
+                    .anyMatch(slot -> slot.getDayOfWeek() != null && slot.getDayOfWeek().equalsIgnoreCase(date.getDayOfWeek().name()));
+            if (!onLeave && !hasAvailability) {
+                missingDates.add(date.toString());
+            }
+        }
+
+        return DoctorDashboardSummaryDTO.builder()
+                .todaysAppointments(todaysAppointments)
+                .pendingAppointments(pendingAppointments)
+                .completedToday(completedToday)
+                .upcomingAppointments(upcomingAppointments)
+                .missingAvailabilityNext3Days(!missingDates.isEmpty())
+                .missingAvailabilityDates(missingDates)
+                .nextAppointmentSummary(nextAppointmentSummary)
+                .build();
     }
 
     public String resolveDoctorPhotoUrl(DoctorProfile profile) {
