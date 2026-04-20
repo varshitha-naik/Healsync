@@ -2,13 +2,17 @@ package com.healsync.service;
 
 import com.healsync.entity.Appointment;
 import com.healsync.entity.DoctorProfile;
+import com.healsync.entity.MedicalSummaryReport;
 import com.healsync.entity.PatientProfile;
+import com.healsync.enums.AppointmentReviewStatus;
 import com.healsync.enums.AppointmentStatus;
 import com.healsync.enums.UserRole;
 import com.healsync.repository.AppointmentRepository;
 import com.healsync.repository.DoctorLeaveRepository;
 import com.healsync.repository.DoctorProfileRepository;
+import com.healsync.repository.MedicalSummaryReportRepository;
 import com.healsync.repository.PatientProfileRepository;
+import com.healsync.repository.PrescriptionRepository;
 import com.healsync.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -29,6 +33,8 @@ public class AppointmentService {
     private final PatientProfileRepository patientProfileRepository;
     private final DoctorProfileRepository doctorProfileRepository;
     private final DoctorLeaveRepository doctorLeaveRepository;
+    private final PrescriptionRepository prescriptionRepository;
+    private final MedicalSummaryReportRepository medicalSummaryReportRepository;
     private final UserRepository userRepository;
     private final EmailService emailService;
 
@@ -235,6 +241,17 @@ public class AppointmentService {
     }
 
     @Transactional
+    public Appointment updateStatusForDoctor(Long appointmentId, AppointmentStatus status, Long doctorUserId) {
+        Appointment appointment = appointmentRepository.findById(appointmentId)
+                .orElseThrow(() -> new RuntimeException("Appointment not found with ID: " + appointmentId));
+        validateDoctorOwnsAppointment(appointment, doctorUserId);
+        if (status == AppointmentStatus.COMPLETED) {
+            validateCompletionDocumentation(appointment);
+        }
+        return updateStatus(appointmentId, status);
+    }
+
+    @Transactional
     public Appointment cancelAppointment(Long appointmentId, String reason) {
         Appointment appointment = appointmentRepository.findById(appointmentId)
                 .orElseThrow(() -> new RuntimeException("Appointment not found with ID: " + appointmentId));
@@ -257,6 +274,14 @@ public class AppointmentService {
         }
 
         return saved;
+    }
+
+    @Transactional
+    public Appointment cancelAppointmentForDoctor(Long appointmentId, String reason, Long doctorUserId) {
+        Appointment appointment = appointmentRepository.findById(appointmentId)
+                .orElseThrow(() -> new RuntimeException("Appointment not found with ID: " + appointmentId));
+        validateDoctorOwnsAppointment(appointment, doctorUserId);
+        return cancelAppointment(appointmentId, reason);
     }
 
     private void sendEmailNotification(Appointment appointment, String type) {
@@ -298,14 +323,33 @@ public class AppointmentService {
     }
 
     @Transactional
-    public Appointment updateDoctorNotes(Long appointmentId, String notes) {
+    public Appointment updateClinicalFields(
+            Long appointmentId, String diagnosis, String clinicalNotes, String followUpInstructions) {
         Appointment appointment = appointmentRepository.findById(appointmentId)
                 .orElseThrow(() -> new RuntimeException("Appointment not found with ID: " + appointmentId));
-
-        appointment.setDoctorNotes(notes);
+        appointment.setDiagnosis(trimToNull(diagnosis));
+        appointment.setDoctorNotes(trimToNull(clinicalNotes));
+        appointment.setFollowUpInstructions(trimToNull(followUpInstructions));
         Appointment saved = appointmentRepository.save(appointment);
         populateNames(saved);
         return saved;
+    }
+
+    @Transactional
+    public Appointment updateClinicalFieldsForDoctor(
+            Long appointmentId, String diagnosis, String clinicalNotes, String followUpInstructions, Long doctorUserId) {
+        Appointment appointment = appointmentRepository.findById(appointmentId)
+                .orElseThrow(() -> new RuntimeException("Appointment not found with ID: " + appointmentId));
+        validateDoctorOwnsAppointment(appointment, doctorUserId);
+        return updateClinicalFields(appointmentId, diagnosis, clinicalNotes, followUpInstructions);
+    }
+
+    private String trimToNull(String value) {
+        if (value == null) {
+            return null;
+        }
+        String t = value.trim();
+        return t.isEmpty() ? null : t;
     }
 
     private void populateNames(Appointment appointment) {
@@ -319,6 +363,8 @@ public class AppointmentService {
         // Populate Patient Name (Using Profile ID)
         patientProfileRepository.findById(appointment.getPatientId())
                 .ifPresent(p -> appointment.setPatientName(p.getFullName()));
+
+        applyReviewStatus(appointment);
     }
 
     private void populateNames(List<Appointment> appointments) {
@@ -343,5 +389,61 @@ public class AppointmentService {
         return patientProfileRepository.findByUserId(userId)
                 .map(PatientProfile::getId)
                 .orElse(null);
+    }
+
+    private void validateDoctorOwnsAppointment(Appointment appointment, Long doctorUserId) {
+        Long doctorProfileId = doctorProfileRepository.findByUserId(doctorUserId)
+                .map(DoctorProfile::getId)
+                .orElseThrow(() -> new RuntimeException("Doctor profile not found"));
+        if (appointment.getDoctorId() == null || !appointment.getDoctorId().equals(doctorProfileId)) {
+            throw new RuntimeException("Unauthorized: appointment does not belong to this doctor");
+        }
+    }
+
+    private void validateCompletionDocumentation(Appointment appointment) {
+        boolean hasDiagnosis = appointment.getDiagnosis() != null && !appointment.getDiagnosis().trim().isEmpty();
+        boolean hasClinicalNotes = appointment.getDoctorNotes() != null && !appointment.getDoctorNotes().trim().isEmpty();
+        boolean hasPrescription = prescriptionRepository.existsByAppointmentId(appointment.getId());
+        if (!hasDiagnosis || !hasClinicalNotes || !hasPrescription) {
+            throw new RuntimeException(
+                    "Complete diagnosis, notes and prescription before this appointment can be reviewed by admin.");
+        }
+    }
+
+    private void applyReviewStatus(Appointment appointment) {
+        boolean hasDiagnosis = appointment.getDiagnosis() != null && !appointment.getDiagnosis().trim().isEmpty();
+        boolean hasClinicalNotes = appointment.getDoctorNotes() != null && !appointment.getDoctorNotes().trim().isEmpty();
+        boolean hasPrescription = appointment.getId() != null && prescriptionRepository.existsByAppointmentId(appointment.getId());
+        appointment.setHasPrescriptionForAppointment(hasPrescription);
+        List<String> missing = new ArrayList<>();
+        if (!hasDiagnosis) {
+            missing.add("diagnosis");
+        }
+        if (!hasClinicalNotes) {
+            missing.add("clinicalNotes");
+        }
+        if (!hasPrescription) {
+            missing.add("prescription");
+        }
+        appointment.setMissingDocumentation(missing);
+
+        if (appointment.getStatus() != AppointmentStatus.COMPLETED) {
+            appointment.setReviewStatus(AppointmentReviewStatus.NOT_READY);
+            return;
+        }
+        MedicalSummaryReport summary = appointment.getId() != null
+                ? medicalSummaryReportRepository.findByAppointmentId(appointment.getId()).orElse(null)
+                : null;
+        if (summary != null && summary.getEmailedAt() != null) {
+            appointment.setReviewStatus(AppointmentReviewStatus.SUMMARY_SENT);
+            return;
+        }
+        appointment.setReviewStatus(
+                hasDiagnosis && hasClinicalNotes && hasPrescription
+                        ? AppointmentReviewStatus.READY_FOR_ADMIN
+                        : AppointmentReviewStatus.NOT_READY);
+        if (appointment.getReviewStatus() != AppointmentReviewStatus.NOT_READY) {
+            appointment.setMissingDocumentation(List.of());
+        }
     }
 }

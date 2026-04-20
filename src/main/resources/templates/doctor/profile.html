@@ -6,6 +6,21 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Doctor Profile - HealSync</title>
     <link rel="stylesheet" th:href="@{/css/design-system.css}" href="/css/design-system.css">
+    <style>
+        .profile-photo-edit { display: none; width: 100%; max-width: 420px; }
+        .profile-photo-edit.active { display: block; }
+        .file-picker-input { display: none; }
+        .file-helper { color: #64748b; font-size: 0.85rem; margin-top: 6px; }
+        .sticky-profile-actions {
+            position: sticky;
+            bottom: 0;
+            background: #fff;
+            border-top: 1px solid #e2e8f0;
+            padding-top: 12px;
+            margin-top: 18px;
+            z-index: 5;
+        }
+    </style>
 </head>
 
 <body>
@@ -29,10 +44,20 @@
                             <h2 id="docName">Loading...</h2>
                             <p class="section-copy" id="docSpec">Loading...</p>
                         </div>
-                        <div class="horizontal-actions">
+                        <div id="photoEditSection" class="profile-photo-edit">
+                            <div class="field">
+                                <label>Profile photo</label>
+                                <div class="horizontal-actions" style="align-items:center;">
+                                    <button type="button" class="btn-secondary" onclick="openPhotoPicker()">Change Photo</button>
+                                    <span id="selectedPhotoName" class="helper-text">No file selected</span>
+                                </div>
+                                <input id="photoInput" class="file-picker-input" type="file" accept=".jpg,.jpeg,.png" onchange="handlePhotoSelected(event)">
+                                <p class="file-helper">JPG or PNG, maximum 2 MB.</p>
+                                <div id="uploadMessage" class="helper-text"></div>
+                            </div>
+                        </div>
+                        <div class="horizontal-actions" id="topEditActions">
                             <button id="editProfileBtn" class="btn-secondary" type="button" onclick="enableEditMode()">Edit Profile</button>
-                            <button id="saveProfileBtn" class="btn-primary" type="button" onclick="saveProfile()" style="display:none;">Save</button>
-                            <button id="cancelProfileBtn" class="btn-secondary" type="button" onclick="cancelEditMode()" style="display:none;">Cancel</button>
                         </div>
                     </div>
 
@@ -64,19 +89,10 @@
                         </div>
                         <div class="detail-card"><label>Clinic ID</label><span id="docClinic">Loading...</span></div>
                     </div>
-
-                    <section style="margin-top: 24px;">
-                        <div class="section-header">
-                            <div>
-                                <h2>Update profile photo</h2>
-                                <p class="section-copy">Supported formats: JPG, PNG. Maximum size 2 MB.</p>
-                            </div>
-                        </div>
-                        <form id="uploadForm" onsubmit="uploadPhoto(event)" class="horizontal-actions">
-                            <input type="file" name="file" id="photoInput" accept="image/*" onchange="uploadPhoto(event)">
-                        </form>
-                        <div id="uploadMessage" class="helper-text" style="margin-top: 12px;"></div>
-                    </section>
+                    <div id="bottomEditActions" class="horizontal-actions sticky-profile-actions" style="display:none;">
+                        <button id="saveProfileBtn" class="btn-primary" type="button" onclick="saveProfile()">Save</button>
+                        <button id="cancelProfileBtn" class="btn-secondary" type="button" onclick="cancelEditMode()">Cancel</button>
+                    </div>
                 </section>
             </main>
         </div>
@@ -85,6 +101,8 @@
     <script>
         let profileData = null;
         let isEditMode = false;
+        let selectedPhotoFile = null;
+        let selectedPhotoPreviewUrl = null;
 
         document.addEventListener("DOMContentLoaded", () => {
             loadProfile();
@@ -128,41 +146,6 @@
             }
         }
 
-        async function uploadPhoto(event) {
-            event.preventDefault();
-
-            const fileInput = document.getElementById('photoInput');
-            const file = fileInput.files[0];
-            if (!file) return;
-
-            const token = localStorage.getItem('jwtToken');
-            const doctorId = getUserIdFromToken(token);
-            const msgDiv = document.getElementById('uploadMessage');
-
-            msgDiv.innerText = "Uploading...";
-
-            const formData = new FormData();
-            formData.append("file", file);
-
-            try {
-                const response = await fetch(`/api/doctor/${doctorId}/upload-photo`, {
-                    method: 'POST',
-                    headers: { 'Authorization': `Bearer ${token}` },
-                    body: formData
-                });
-
-                if (!response.ok) throw new Error("Upload failed");
-                const result = await response.json();
-                document.getElementById('profileImg').src = getDoctorPhotoUrl(result.url);
-                msgDiv.className = 'alert alert-success';
-                msgDiv.innerText = "Profile photo updated successfully.";
-            } catch (error) {
-                console.error(error);
-                msgDiv.className = 'alert alert-danger';
-                msgDiv.innerText = "Failed to upload photo.";
-            }
-        }
-
         function getUserIdFromToken() {
             return localStorage.getItem('userId');
         }
@@ -186,14 +169,16 @@
         function cancelEditMode() {
             isEditMode = false;
             syncInputsFromProfile();
+            clearSelectedPhoto();
+            document.getElementById('profileImg').src = getDoctorPhotoUrl(profileData?.profilePhotoUrl);
             toggleProfileEditUI(false);
             showProfileMessage("", "success");
         }
 
         function toggleProfileEditUI(editMode) {
             document.getElementById('editProfileBtn').style.display = editMode ? 'none' : 'inline-flex';
-            document.getElementById('saveProfileBtn').style.display = editMode ? 'inline-flex' : 'none';
-            document.getElementById('cancelProfileBtn').style.display = editMode ? 'inline-flex' : 'none';
+            document.getElementById('bottomEditActions').style.display = editMode ? 'flex' : 'none';
+            document.getElementById('photoEditSection').classList.toggle('active', editMode);
 
             document.getElementById('docNameDisplay').style.display = editMode ? 'none' : 'inline';
             document.getElementById('docSpecDisplay').style.display = editMode ? 'none' : 'inline';
@@ -243,15 +228,93 @@
                     body: JSON.stringify(payload)
                 });
                 if (!response.ok) throw new Error("Failed to update profile");
+
+                if (selectedPhotoFile) {
+                    await uploadSelectedPhoto(token, doctorId);
+                }
+
                 localStorage.setItem('userEmail', payload.email);
                 showProfileMessage("Profile updated successfully.", "success");
                 await loadProfile();
                 isEditMode = false;
                 toggleProfileEditUI(false);
+                clearSelectedPhoto();
             } catch (error) {
                 console.error(error);
                 showProfileMessage("Failed to update profile.", "error");
             }
+        }
+
+        function openPhotoPicker() {
+            if (!isEditMode) return;
+            document.getElementById('photoInput').click();
+        }
+
+        function handlePhotoSelected(event) {
+            const file = event.target.files?.[0];
+            if (!file) {
+                clearUploadMessage();
+                return;
+            }
+            const validationError = validatePhoto(file);
+            if (validationError) {
+                selectedPhotoFile = null;
+                event.target.value = '';
+                showUploadMessage(validationError, true);
+                return;
+            }
+            selectedPhotoFile = file;
+            document.getElementById('selectedPhotoName').textContent = file.name;
+            clearUploadMessage();
+            if (selectedPhotoPreviewUrl) URL.revokeObjectURL(selectedPhotoPreviewUrl);
+            selectedPhotoPreviewUrl = URL.createObjectURL(file);
+            document.getElementById('profileImg').src = selectedPhotoPreviewUrl;
+        }
+
+        function validatePhoto(file) {
+            const allowed = ['image/jpeg', 'image/png'];
+            if (!allowed.includes(file.type)) {
+                return 'Please upload a JPG or PNG image.';
+            }
+            const maxBytes = 2 * 1024 * 1024;
+            if (file.size > maxBytes) {
+                return 'Image must be smaller than 2 MB.';
+            }
+            return null;
+        }
+
+        async function uploadSelectedPhoto(token, doctorId) {
+            const formData = new FormData();
+            formData.append('file', selectedPhotoFile);
+            const response = await fetch(`/api/doctor/${doctorId}/upload-photo`, {
+                method: 'POST',
+                headers: { Authorization: `Bearer ${token}` },
+                body: formData
+            });
+            if (!response.ok) throw new Error('Photo upload failed');
+        }
+
+        function clearSelectedPhoto() {
+            selectedPhotoFile = null;
+            document.getElementById('photoInput').value = '';
+            document.getElementById('selectedPhotoName').textContent = 'No file selected';
+            if (selectedPhotoPreviewUrl) {
+                URL.revokeObjectURL(selectedPhotoPreviewUrl);
+                selectedPhotoPreviewUrl = null;
+            }
+            clearUploadMessage();
+        }
+
+        function showUploadMessage(msg, isError = false) {
+            const msgDiv = document.getElementById('uploadMessage');
+            msgDiv.className = isError ? 'alert alert-danger' : 'alert alert-success';
+            msgDiv.textContent = msg;
+        }
+
+        function clearUploadMessage() {
+            const msgDiv = document.getElementById('uploadMessage');
+            msgDiv.className = 'helper-text';
+            msgDiv.textContent = '';
         }
 
         function showProfileMessage(message, type = "success") {

@@ -144,6 +144,8 @@
     <script th:inline="none">
         const API_BASE = '/api/doctor';
         let currentUserId = null;
+        let currentSlots = [];
+        let currentLeaves = [];
 
         async function init() {
             const token = localStorage.getItem('jwtToken');
@@ -179,17 +181,19 @@
             ]);
             const slots = await availabilityRes.json();
             const leaves = await leaveRes.json();
+            currentSlots = Array.isArray(slots) ? slots : [];
+            currentLeaves = Array.isArray(leaves) ? leaves : [];
 
             const tbody = document.getElementById('slotsBody');
             tbody.innerHTML = '';
 
-            if (slots.length === 0) {
+            if (currentSlots.length === 0) {
                 tbody.innerHTML = '<tr><td colspan="4" class="text-center">No slots added.</td></tr>';
             } else {
                 const days = { MONDAY: 1, TUESDAY: 2, WEDNESDAY: 3, THURSDAY: 4, FRIDAY: 5, SATURDAY: 6, SUNDAY: 7 };
-                slots.sort((a, b) => days[a.dayOfWeek] - days[b.dayOfWeek] || a.startTime.localeCompare(b.startTime));
+                currentSlots.sort((a, b) => days[a.dayOfWeek] - days[b.dayOfWeek] || a.startTime.localeCompare(b.startTime));
 
-                slots.forEach(s => {
+                currentSlots.forEach(s => {
                     const tr = document.createElement('tr');
                     tr.innerHTML = `
                         <td>${s.dayOfWeek}</td>
@@ -203,11 +207,11 @@
 
             const leaveBody = document.getElementById('leaveBody');
             leaveBody.innerHTML = '';
-            if (!leaves || leaves.length === 0) {
+            if (!currentLeaves || currentLeaves.length === 0) {
                 leaveBody.innerHTML = '<tr><td colspan="4" class="text-center">No leave dates added.</td></tr>';
                 return;
             }
-            leaves.forEach(leave => {
+            currentLeaves.forEach(leave => {
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
                     <td>${leave.fromDate}</td>
@@ -241,6 +245,15 @@
                 toDate: toDate,
                 reason: reason
             };
+            const hasOverlappingLeave = currentLeaves.some(leave =>
+                leave.fromDate && leave.toDate &&
+                leave.fromDate <= toDate &&
+                leave.toDate >= fromDate
+            );
+            if (hasOverlappingLeave) {
+                showInlineMessage('leaveMessage', "Leave has already been applied for the selected dates.", 'error');
+                return;
+            }
 
             const postRes = await fetch(`${API_BASE}/leave`, {
                 method: 'POST',
@@ -273,6 +286,15 @@
             const selectedDays = [...document.querySelectorAll('input[name=day]:checked')].map(c => c.value);
             if (selectedDays.length === 0) {
                 showInlineMessage('availabilityMessage', "Please select at least one day", 'error');
+                return;
+            }
+            const hasDuplicateSlot = selectedDays.some(day => currentSlots.some(slot =>
+                slot.dayOfWeek === day &&
+                slot.startTime < (eTime + ":00") &&
+                slot.endTime > (sTime + ":00")
+            ));
+            if (hasDuplicateSlot) {
+                showInlineMessage('availabilityMessage', "Availability already exists for this day and time.", 'error');
                 return;
             }
 

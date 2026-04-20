@@ -1,0 +1,12 @@
+CREATE TABLE IF NOT EXISTS medical_summary_reports (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    appointment_id BIGINT NOT NULL UNIQUE,
+    patient_id BIGINT NOT NULL,
+    doctor_id BIGINT NOT NULL,
+    generated_summary LONGTEXT NULL,
+    generated_at TIMESTAMP NULL,
+    emailed_at TIMESTAMP NULL,
+    generated_by_admin BIGINT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);

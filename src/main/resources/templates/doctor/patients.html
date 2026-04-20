@@ -6,6 +6,35 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>My Patients - HealSync</title>
     <link rel="stylesheet" th:href="@{/css/design-system.css}" href="/css/design-system.css">
+    <style>
+        .doctor-history-modal {
+            width: min(900px, 96vw);
+            max-height: 92vh;
+            display: flex;
+            flex-direction: column;
+            padding: 0;
+            overflow: hidden;
+        }
+
+        .doctor-history-header {
+            padding: 20px 24px 12px;
+            border-bottom: 1px solid var(--color-border);
+            flex-shrink: 0;
+        }
+
+        .doctor-history-body {
+            padding: 16px 24px;
+            overflow: auto;
+            min-height: 0;
+            flex: 1;
+        }
+
+        .doctor-history-footer {
+            padding: 12px 24px 20px;
+            border-top: 1px solid var(--color-border);
+            flex-shrink: 0;
+        }
+    </style>
 </head>
 
 <body>
@@ -35,6 +64,7 @@
                                 <th>Name</th>
                                 <th>Email</th>
                                 <th>Last visit</th>
+                                <th class="actions-cell">Action</th>
                             </tr>
                         </thead>
                         <tbody id="patientsBody"></tbody>
@@ -45,10 +75,10 @@
     </div>
 
     <div id="historyModal" class="modal is-hidden">
-        <div class="modal-content">
-            <h2 id="modalTitle">Appointment History</h2>
-            <div id="historyList" class="history-list" style="margin-top: 16px;"></div>
-            <div class="modal-actions">
+        <div class="modal-content doctor-history-modal">
+            <div class="doctor-history-header"><h2 id="modalTitle">Appointment History</h2></div>
+            <div id="historyList" class="history-list doctor-history-body"></div>
+            <div class="modal-actions doctor-history-footer">
                 <button class="btn-secondary" onclick="closeModal()">Cancel</button>
             </div>
         </div>
@@ -56,6 +86,7 @@
 
     <script th:inline="none">
         const API_BASE = '/api/doctor';
+        let currentDoctorUserId = null;
 
         async function loadPatients() {
             const token = localStorage.getItem('jwtToken');
@@ -64,6 +95,7 @@
             try {
                 const meRes = await fetch('/api/auth/me', { headers: { 'Authorization': `Bearer ${token}` } });
                 const user = await meRes.json();
+                currentDoctorUserId = user.userId;
                 const res = await fetch(`${API_BASE}/${user.userId}/patients`, { headers: { 'Authorization': `Bearer ${token}` } });
                 const patients = await res.json();
 
@@ -77,8 +109,12 @@
 
                 patients.forEach(p => {
                     const tr = document.createElement('tr');
-                    tr.onclick = () => showHistory(p.patientId, p.patientName);
-                    tr.innerHTML = `<td>${p.patientName}</td><td>${p.email}</td><td>${p.lastVisitDate ? new Date(p.lastVisitDate).toLocaleDateString() : '-'}</td>`;
+                    tr.innerHTML = `
+                        <td>${p.patientName}</td>
+                        <td>${p.email}</td>
+                        <td>${p.lastVisitDate ? new Date(p.lastVisitDate).toLocaleDateString() : '-'}</td>
+                        <td class="actions-cell"><button class="btn-secondary" type="button" onclick="showHistory(${p.patientId}, '${escapeHtml(p.patientName)}')">View History</button></td>
+                    `;
                     tbody.appendChild(tr);
                 });
 
@@ -90,33 +126,79 @@
             }
         }
 
-        async function showHistory(patientId, name) {
+        async function showHistory(patientProfileId, name) {
             const token = localStorage.getItem('jwtToken');
             document.getElementById('modalTitle').innerText = `History: ${name}`;
             document.getElementById('historyList').innerHTML = 'Loading...';
             document.getElementById('historyModal').classList.remove('is-hidden');
 
             try {
-                const res = await fetch(`/api/appointments/patient/${patientId}`, { headers: { 'Authorization': `Bearer ${token}` } });
+                const res = await fetch(`/api/doctor/${currentDoctorUserId}/patient-history?patientProfileId=${patientProfileId}`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
                 if (!res.ok) throw new Error("Could not fetch history");
-                const apps = await res.json();
+                const payload = await res.json();
                 const list = document.getElementById('historyList');
                 list.innerHTML = '';
 
-                if (apps.length === 0) {
-                    list.innerHTML = '<p>No history found.</p>';
-                    return;
-                }
+                const demographics = payload.patient || {};
+                const pastAppointments = payload.pastAppointments || [];
+                const completedAppointments = payload.completedAppointments || [];
+                const prescriptions = payload.prescriptions || [];
+                const reports = payload.reports || [];
 
-                apps.forEach(a => {
+                const demographicCard = document.createElement('div');
+                demographicCard.className = 'history-card';
+                demographicCard.innerHTML = `
+                    <h3>Patient demographics</h3>
+                    <p>Email: ${demographics.email || '-'}</p>
+                    <p>DOB: ${demographics.dob || '-'}</p>
+                    <p>Gender: ${demographics.gender || '-'}</p>
+                    <p>Blood group: ${demographics.bloodGroup || '-'}</p>
+                    <p>Phone: ${demographics.phone || '-'}</p>
+                `;
+                list.appendChild(demographicCard);
+
+                const section = (title, itemsHtml) => {
                     const div = document.createElement('div');
                     div.className = 'history-card';
-                    div.innerHTML = `<h3>${new Date(a.startDateTime).toLocaleDateString()} ${new Date(a.startDateTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</h3><p>${a.reason || 'No reason specified'}</p><span class="status-badge ${getStatusClass(a.status)}">${a.status}</span>`;
+                    div.innerHTML = `<h3>${title}</h3>${itemsHtml}`;
                     list.appendChild(div);
-                });
+                };
+
+                section(
+                    'Past appointments',
+                    pastAppointments.length
+                        ? pastAppointments.map(a => `<p>${formatAppointmentLine(a)} <span class="status-badge ${getStatusClass(a.status)}">${a.status}</span></p>`).join('')
+                        : '<p>No past appointments found.</p>'
+                );
+                section(
+                    'Completed appointments',
+                    completedAppointments.length
+                        ? completedAppointments.map(a => `<p>${formatAppointmentLine(a)}</p>`).join('')
+                        : '<p>No completed appointments found.</p>'
+                );
+                section(
+                    'Previous prescriptions',
+                    prescriptions.length
+                        ? prescriptions.map(p => `<p>Prescription #${p.id} (${new Date(p.createdAt).toLocaleDateString()}) - ${escapeHtml(p.notes || 'No notes')}</p>`).join('')
+                        : '<p>No prescriptions found.</p>'
+                );
+                section(
+                    'Previous medical reports',
+                    reports.length
+                        ? reports.map(r => `<p>${escapeHtml(r.title || 'Report')} (${new Date(r.createdAt).toLocaleDateString()})</p>`).join('')
+                        : '<p>No reports found.</p>'
+                );
             } catch (e) {
                 document.getElementById('historyList').innerText = e.message;
             }
+        }
+
+        function formatAppointmentLine(appointment) {
+            if (!appointment || !appointment.startDateTime) return 'Unknown appointment';
+            const d = new Date(appointment.startDateTime);
+            return `${d.toLocaleDateString()} ${d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - ${escapeHtml(appointment.reason || 'No reason')}`;
         }
 
         function getStatusClass(status) {
@@ -128,6 +210,16 @@
 
         function closeModal() {
             document.getElementById('historyModal').classList.add('is-hidden');
+        }
+
+        function escapeHtml(unsafe) {
+            if (!unsafe) return '';
+            return unsafe
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
         }
 
         window.onload = loadPatients;

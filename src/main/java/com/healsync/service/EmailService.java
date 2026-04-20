@@ -14,6 +14,7 @@ import org.thymeleaf.TemplateEngine;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Locale;
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -201,6 +202,62 @@ public class EmailService {
                 patientName, ensureDoctorTitle(doctorName), ensureDoctorTitle(doctorName));
 
         sendHtmlEmail(to, subject, createEmailTemplate("New Prescription", body));
+    }
+
+    @Async
+    public void sendPrescriptionSummary(
+            String to,
+            String patientName,
+            String doctorName,
+            String appointmentDateTime,
+            List<String> medicineLines,
+            String additionalNotes) {
+        String subject = "Prescription Summary - HealSync";
+        String medicineListHtml = (medicineLines == null || medicineLines.isEmpty())
+                ? "<li>No medicine details available.</li>"
+                : medicineLines.stream().map(line -> "<li>" + line + "</li>").reduce("", String::concat);
+        String body = String.format(
+                """
+                        <p>Dear <strong>%s</strong>,</p>
+                        <p><strong>%s</strong> has issued a prescription after your consultation.</p>
+                        <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; margin: 18px 0;">
+                            <p style="margin: 0 0 10px 0;"><strong>Appointment:</strong> %s</p>
+                            <p style="margin: 0 0 8px 0;"><strong>Medicine list:</strong></p>
+                            <ul style="margin: 0; padding-left: 18px;">%s</ul>
+                            <p style="margin-top: 10px;"><strong>Additional notes:</strong> %s</p>
+                        </div>
+                        <p>Please follow the prescription as advised and contact your doctor if symptoms persist.</p>
+                        """,
+                patientName,
+                ensureDoctorTitle(doctorName),
+                appointmentDateTime != null ? appointmentDateTime : "N/A",
+                medicineListHtml,
+                additionalNotes != null && !additionalNotes.isBlank() ? additionalNotes : "None");
+        sendHtmlEmail(to, subject, createEmailTemplate("Prescription Summary", body));
+    }
+
+    @Async
+    public void sendVisitSummary(
+            String to,
+            String patientName,
+            String doctorName,
+            String appointmentDateTime,
+            String summaryText) {
+        String subject = "Your HealSync Visit Summary";
+        String body = String.format(
+                """
+                        <p>Dear <strong>%s</strong>,</p>
+                        <p>Here is your medical visit summary from <strong>%s</strong> on <strong>%s</strong>.</p>
+                        <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; margin: 18px 0;">
+                            <pre style="margin: 0; white-space: pre-wrap; font-family: inherit;">%s</pre>
+                        </div>
+                        <p>For any urgent concerns, please contact your clinic directly.</p>
+                        """,
+                patientName,
+                ensureDoctorTitle(doctorName),
+                appointmentDateTime,
+                summaryText != null ? summaryText : "No summary available.");
+        sendHtmlEmail(to, subject, createEmailTemplate("Visit Summary", body));
     }
 
     private void sendHtmlEmail(String to, String subject, String htmlContent) {

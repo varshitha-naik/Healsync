@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pending Medical Summaries - HealSync Admin</title>
+    <link rel="stylesheet" th:href="@{/css/design-system.css}" href="/css/design-system.css">
+    <style>
+        .summary-modal-content { max-width: 980px; width: min(980px, 95vw); max-height: 90vh; display: flex; flex-direction: column; }
+        .summary-modal-body { overflow-y: auto; padding: 20px; display: grid; gap: 16px; }
+        .summary-modal-footer { border-top: 1px solid #e2e8f0; padding: 14px 20px; display: flex; gap: 10px; justify-content: flex-end; }
+        #summaryText { min-height: 260px; width: 100%; }
+    </style>
+</head>
+
+<body>
+    <div class="app-shell">
+        <th:block th:replace="fragments/admin-header :: adminHeader"></th:block>
+        <div class="app-main">
+            <header class="topbar">
+                <div class="topbar-title-group">
+                    <p class="breadcrumb">Admin / Reports</p>
+                    <h1>Pending Medical Summaries</h1>
+                </div>
+            </header>
+
+            <main class="page-content">
+                <section class="card">
+                    <div id="summaryMsg" class="alert" style="display:none;"></div>
+                    <div class="section-header">
+                        <div>
+                            <h2>Completed appointments requiring summary processing</h2>
+                            <p class="section-copy">Generate, review, edit, and email visit summaries to patients.</p>
+                        </div>
+                    </div>
+                    <section class="table-card">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Patient</th>
+                                    <th>Doctor</th>
+                                    <th>Appointment date</th>
+                                    <th>Status</th>
+                                    <th>Email state</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="summaryBody"></tbody>
+                        </table>
+                    </section>
+                    <div id="summaryEmpty" class="empty-state" style="display:none;">
+                        <p>No pending medical summaries found.</p>
+                    </div>
+                </section>
+            </main>
+        </div>
+    </div>
+
+    <div id="summaryModal" class="modal hidden">
+        <div class="modal-content summary-modal-content">
+            <div class="doctor-modal-header">
+                <h2>Medical Summary Review</h2>
+            </div>
+            <div class="summary-modal-body">
+                <div class="details-grid">
+                    <div class="detail-card"><label>Patient</label><strong id="dPatient">-</strong></div>
+                    <div class="detail-card"><label>Doctor</label><strong id="dDoctor">-</strong></div>
+                    <div class="detail-card"><label>Appointment</label><strong id="dDate">-</strong></div>
+                    <div class="detail-card"><label>Status</label><strong id="dStatus">-</strong></div>
+                </div>
+                <div class="field">
+                    <label>Diagnosis (from doctor)</label>
+                    <textarea id="dDiagnosis" rows="3" readonly></textarea>
+                </div>
+                <div class="field">
+                    <label>Clinical notes (from doctor)</label>
+                    <textarea id="dClinicalNotes" rows="4" readonly></textarea>
+                </div>
+                <div class="field">
+                    <label>Follow-up instructions (from doctor)</label>
+                    <textarea id="dFollowUp" rows="3" readonly></textarea>
+                </div>
+                <p class="section-copy" id="dLegacyReportsHint" style="display:none;">Legacy uploaded reports (historical) may appear in patient record tools; the emailed summary is composed below.</p>
+                <div class="field">
+                    <label>Final summary (editable before sending)</label>
+                    <textarea id="summaryText" placeholder="Click Generate Summary to create draft"></textarea>
+                </div>
+            </div>
+            <div class="summary-modal-footer">
+                <button class="btn-secondary" type="button" onclick="closeSummaryModal()">Close</button>
+                <button class="btn-secondary" type="button" onclick="generateSummaryForCurrent()">Generate Summary</button>
+                <button class="btn-primary" type="button" onclick="saveSummaryForCurrent()">Save</button>
+                <button class="btn-primary" id="sendSummaryBtn" type="button" onclick="sendSummaryForCurrent(false)">Send Email</button>
+                <button class="btn-secondary" id="resendSummaryBtn" type="button" onclick="sendSummaryForCurrent(true)" style="display:none;">Resend</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const token = localStorage.getItem('jwtToken');
+        const userRole = localStorage.getItem('userRole');
+        let selectedAppointmentId = null;
+        let currentDetails = null;
+
+        if (!token || userRole !== 'ADMIN') {
+            window.location.href = '/login';
+        }
+
+        async function loadSummaries() {
+            try {
+                const response = await fetch('/api/admin/medical-summaries', { headers: authHeaders() });
+                if (!response.ok) throw new Error('Failed to fetch summaries');
+                const rows = await response.json();
+                renderRows(rows);
+            } catch (e) {
+                showMsg('Unable to load summary list.', true);
+            }
+        }
+
+        function renderRows(rows) {
+            const tbody = document.getElementById('summaryBody');
+            const empty = document.getElementById('summaryEmpty');
+            tbody.innerHTML = '';
+            if (!rows.length) {
+                empty.style.display = 'grid';
+                return;
+            }
+            empty.style.display = 'none';
+            rows.forEach(row => {
+                const dt = row.appointmentDate ? new Date(row.appointmentDate).toLocaleString() : '-';
+                const emailBadge = row.emailed
+                    ? '<span class="status-badge status-confirmed">Emailed</span>'
+                    : '<span class="status-badge status-requested">Pending</span>';
+                tbody.innerHTML += `
+                    <tr>
+                        <td>${escapeHtml(row.patientName || '-')}</td>
+                        <td>${escapeHtml(row.doctorName || '-')}</td>
+                        <td>${dt}</td>
+                        <td><span class="status-badge status-completed">${escapeHtml(row.status || 'COMPLETED')}</span></td>
+                        <td>${emailBadge}</td>
+                        <td class="horizontal-actions">
+                            <button class="btn-secondary" type="button" onclick="viewDetails(${row.appointmentId})">View Details</button>
+                            <button class="btn-secondary" type="button" onclick="generateFromRow(${row.appointmentId})">Generate Summary</button>
+                            ${row.emailed
+                        ? `<button class="btn-secondary" type="button" onclick="sendForRow(${row.appointmentId}, true)">Resend</button>`
+                        : `<button class="btn-primary" type="button" onclick="sendForRow(${row.appointmentId}, false)">Send Email</button>`}
+                        </td>
+                    </tr>`;
+            });
+        }
+
+        async function viewDetails(appointmentId) {
+            selectedAppointmentId = appointmentId;
+            const response = await fetch(`/api/admin/medical-summaries/${appointmentId}`, { headers: authHeaders() });
+            if (!response.ok) {
+                showMsg('Unable to load details.', true);
+                return;
+            }
+            currentDetails = await response.json();
+            bindModalDetails();
+            document.getElementById('summaryModal').classList.remove('hidden');
+        }
+
+        async function generateFromRow(appointmentId) {
+            const response = await fetch(`/api/admin/medical-summaries/${appointmentId}/generate`, { method: 'POST', headers: authHeaders() });
+            if (!response.ok) {
+                showMsg('Could not generate summary. Only completed appointments are allowed.', true);
+                return;
+            }
+            showMsg('Summary generated successfully.');
+            await loadSummaries();
+            await viewDetails(appointmentId);
+        }
+
+        async function sendForRow(appointmentId, resend) {
+            const response = await fetch(`/api/admin/medical-summaries/${appointmentId}/send?resend=${resend}`, {
+                method: 'POST',
+                headers: authHeaders()
+            });
+            const body = await response.json().catch(() => ({}));
+            if (!response.ok) {
+                showMsg(body.message || 'Failed to send summary email.', true);
+                return;
+            }
+            const sentTs = body.emailedAt ? new Date(body.emailedAt).toLocaleString() : null;
+            showMsg(sentTs ? `Summary emailed successfully (Sent: ${sentTs}).` : (body.message || 'Summary emailed successfully.'));
+            await loadSummaries();
+        }
+
+        function bindModalDetails() {
+            document.getElementById('dPatient').textContent = currentDetails.patientName || '-';
+            document.getElementById('dDoctor').textContent = currentDetails.doctorName || '-';
+            document.getElementById('dDate').textContent = currentDetails.appointmentDate ? new Date(currentDetails.appointmentDate).toLocaleString() : '-';
+            document.getElementById('dStatus').textContent = currentDetails.status || '-';
+            document.getElementById('dDiagnosis').value = currentDetails.diagnosis || '';
+            document.getElementById('dClinicalNotes').value = currentDetails.clinicalNotes || currentDetails.doctorNotes || '';
+            document.getElementById('dFollowUp').value = currentDetails.followUpInstructions || '';
+            const hasLegacy = currentDetails.reports && currentDetails.reports.length;
+            const hint = document.getElementById('dLegacyReportsHint');
+            hint.style.display = hasLegacy ? 'block' : 'none';
+            document.getElementById('summaryText').value = currentDetails.summary || '';
+            const emailed = !!currentDetails.emailedAt;
+            document.getElementById('sendSummaryBtn').style.display = emailed ? 'none' : 'inline-flex';
+            document.getElementById('resendSummaryBtn').style.display = emailed ? 'inline-flex' : 'none';
+        }
+
+        async function generateSummaryForCurrent() {
+            if (!selectedAppointmentId) return;
+            await generateFromRow(selectedAppointmentId);
+        }
+
+        async function saveSummaryForCurrent() {
+            if (!selectedAppointmentId) return false;
+            const summaryText = document.getElementById('summaryText').value.trim();
+            const response = await fetch(`/api/admin/medical-summaries/${selectedAppointmentId}`, {
+                method: 'PUT',
+                headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+                body: JSON.stringify({ generatedSummary: summaryText })
+            });
+            const body = await response.json().catch(() => ({}));
+            if (!response.ok) {
+                showMsg(body.message || 'Failed to save summary.', true);
+                return false;
+            }
+            showMsg(body.message || 'Summary saved successfully.');
+            currentDetails.summary = summaryText;
+            await loadSummaries();
+            return true;
+        }
+
+        async function sendSummaryForCurrent(resend) {
+            if (!selectedAppointmentId) return;
+            const saved = await saveSummaryForCurrent();
+            if (!saved) return;
+            await sendForRow(selectedAppointmentId, resend);
+            await viewDetails(selectedAppointmentId);
+        }
+
+        function closeSummaryModal() {
+            document.getElementById('summaryModal').classList.add('hidden');
+            selectedAppointmentId = null;
+            currentDetails = null;
+        }
+
+        function showMsg(message, isError = false) {
+            const el = document.getElementById('summaryMsg');
+            el.className = isError ? 'alert alert-danger' : 'alert alert-success';
+            el.textContent = message;
+            el.style.display = 'block';
+            setTimeout(() => { el.style.display = 'none'; }, 4500);
+        }
+
+        function authHeaders() {
+            return { Authorization: `Bearer ${token}` };
+        }
+
+        function escapeHtml(value) {
+            return String(value || '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+        }
+
+        loadSummaries();
+    </script>
+</body>
+
+</html>

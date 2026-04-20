@@ -6,6 +6,174 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Doctor Appointments - HealSync</title>
     <link rel="stylesheet" th:href="@{/css/design-system.css}" href="/css/design-system.css">
+    <style>
+        .doctor-modal-content {
+            width: min(860px, 96vw);
+            max-height: 92vh;
+            display: flex;
+            flex-direction: column;
+            padding: 0;
+            overflow: hidden;
+        }
+
+        .doctor-modal-header {
+            padding: 20px 24px 12px;
+            border-bottom: 1px solid var(--color-border);
+            background: var(--color-surface);
+            flex-shrink: 0;
+        }
+
+        .doctor-modal-body {
+            padding: 16px 24px;
+            overflow: auto;
+            min-height: 0;
+            flex: 1;
+        }
+
+        .doctor-modal-footer {
+            padding: 12px 24px 20px;
+            border-top: 1px solid var(--color-border);
+            background: var(--color-surface);
+            flex-shrink: 0;
+        }
+
+        .medicine-row {
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius-sm);
+            padding: 12px;
+            background: var(--color-surface-muted);
+        }
+
+        .review-badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 2px 8px;
+            border-radius: 999px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .review-not-ready {
+            background: #e5e7eb;
+            color: #374151;
+        }
+
+        .review-ready {
+            background: #dbeafe;
+            color: #1d4ed8;
+        }
+
+        .review-sent {
+            background: #dcfce7;
+            color: #166534;
+        }
+
+        .review-badge-wrap {
+            position: relative;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .badge-help-btn {
+            width: 18px;
+            height: 18px;
+            border-radius: 999px;
+            border: 1px solid var(--color-border);
+            background: var(--color-surface-muted);
+            color: var(--color-text-secondary);
+            font-size: 11px;
+            line-height: 1;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .badge-tooltip {
+            position: absolute;
+            top: calc(100% + 8px);
+            right: 0;
+            min-width: 220px;
+            max-width: 300px;
+            background: #0f172a;
+            color: #f8fafc;
+            border-radius: 8px;
+            padding: 8px 10px;
+            font-size: 12px;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+            opacity: 0;
+            pointer-events: none;
+            transform: translateY(-4px);
+            transition: opacity 0.18s ease, transform 0.18s ease;
+            z-index: 12;
+        }
+
+        .review-badge-wrap:hover .badge-tooltip,
+        .review-badge-wrap:focus-within .badge-tooltip,
+        .review-badge-wrap.open .badge-tooltip {
+            opacity: 1;
+            pointer-events: auto;
+            transform: translateY(0);
+        }
+
+        .accordion-list {
+            display: grid;
+            gap: 10px;
+        }
+
+        .accordion-item {
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius-sm);
+            overflow: hidden;
+            background: var(--color-surface);
+        }
+
+        .accordion-trigger {
+            width: 100%;
+            border: none;
+            background: transparent;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 14px;
+            cursor: pointer;
+            text-align: left;
+        }
+
+        .accordion-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .accordion-panel {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 240ms ease;
+            border-top: 1px solid transparent;
+        }
+
+        .accordion-item.expanded .accordion-panel {
+            max-height: 900px;
+            border-top-color: var(--color-border);
+        }
+
+        .accordion-panel-inner {
+            padding: 14px;
+            display: grid;
+            gap: 10px;
+        }
+
+        @media (max-width: 768px) {
+            .doctor-modal-content {
+                width: 98vw;
+                max-height: 96vh;
+            }
+        }
+    </style>
 </head>
 
 <body>
@@ -61,7 +229,22 @@
                             <div id="upcomingList" class="appointment-history"></div>
                         </section>
                         <section class="card">
-                            <div class="section-header"><div><h2>Past appointments</h2></div></div>
+                            <div class="section-header">
+                                <div><h2>Past appointments</h2></div>
+                            </div>
+                            <div class="filter-grid" style="margin-bottom: 10px;">
+                                <div class="field">
+                                    <label>Search</label>
+                                    <input id="pastSearchInput" type="text" placeholder="Search patient name" oninput="applyFilters()">
+                                </div>
+                                <div class="field">
+                                    <label>Sort</label>
+                                    <select id="pastSortOrder" onchange="applyFilters()">
+                                        <option value="newest">Newest first</option>
+                                        <option value="oldest">Oldest first</option>
+                                    </select>
+                                </div>
+                            </div>
                             <div id="pastList" class="appointment-history"></div>
                         </section>
                     </section>
@@ -95,10 +278,44 @@
         </div>
     </div>
 
+    <div id="appointmentDetailsModal" class="modal hidden">
+        <div class="modal-content doctor-modal-content">
+            <div class="doctor-modal-header"><h2 id="appointmentDetailsTitle">Appointment details</h2></div>
+            <div id="appointmentDetailsBody" class="history-list doctor-modal-body"></div>
+            <div class="modal-actions doctor-modal-footer">
+                <button type="button" class="btn-secondary" onclick="closeAppointmentDetailsModal()">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="prescriptionModal" class="modal hidden">
+        <div class="modal-content doctor-modal-content">
+            <div class="doctor-modal-header"><h2>Create Prescription</h2></div>
+            <div class="page-stack doctor-modal-body">
+                <div class="detail-card"><label>Patient</label><strong id="prescriptionPatientName">-</strong></div>
+                <div class="detail-card"><label>Appointment</label><strong id="prescriptionAppointmentRef">-</strong></div>
+                <div id="prescriptionItemsContainer" class="page-stack"></div>
+                <div class="horizontal-actions">
+                    <button type="button" class="btn-secondary" onclick="addPrescriptionRow()">Add Medicine</button>
+                </div>
+                <div class="field">
+                    <label>Prescription Notes</label>
+                    <textarea id="prescriptionNotes" rows="3" placeholder="Additional notes"></textarea>
+                </div>
+            </div>
+            <div class="modal-actions doctor-modal-footer">
+                <button type="button" class="btn-secondary" onclick="closePrescriptionModal()">Cancel</button>
+                <button type="button" class="btn-primary" onclick="savePrescription()">Save Prescription</button>
+            </div>
+        </div>
+    </div>
+
     <script>
         const API_BASE = '/api/appointments';
         let currentDoctorUserId = null;
         let allAppointments = [];
+        let selectedPrescriptionContext = null;
+        let expandedPastAppointmentId = null;
 
         function getAuthHeaders() {
             const token = localStorage.getItem('jwtToken');
@@ -153,21 +370,7 @@
         }
 
         function applyFilters() {
-            const statusFilter = (document.getElementById('statusFilter').value || '').trim().toUpperCase();
-            const fromDateValue = document.getElementById('fromDateFilter').value;
-            const toDateValue = document.getElementById('toDateFilter').value;
-            const fromDate = fromDateValue ? new Date(`${fromDateValue}T00:00:00`) : null;
-            const toDate = toDateValue ? new Date(`${toDateValue}T23:59:59`) : null;
-
-            const filtered = allAppointments.filter(app => {
-                if (!app.startDateTime) return false;
-                const appDate = new Date(app.startDateTime);
-                const matchesStatus = !statusFilter || (app.status || '').toUpperCase() === statusFilter;
-                const matchesFrom = !fromDate || appDate >= fromDate;
-                const matchesTo = !toDate || appDate <= toDate;
-                return matchesStatus && matchesFrom && matchesTo;
-            });
-
+            const filtered = getFilteredAppointments();
             updateSummary(filtered);
             renderAppointments(filtered);
         }
@@ -190,33 +393,165 @@
             const upcomingContainer = document.getElementById('upcomingList');
             const pastContainer = document.getElementById('pastList');
             const now = new Date();
-
-            const renderList = (list, container, emptyMsg) => {
-                container.innerHTML = '';
-                if (list.length === 0) {
-                    container.innerHTML = `<div class="empty-state"><p>${emptyMsg}</p></div>`;
-                    return;
-                }
-
-                list.forEach(app => {
-                    const startStr = app.startDateTime ? new Date(app.startDateTime).toLocaleString() : 'N/A';
-                    const endStr = app.endDateTime ? new Date(app.endDateTime).toLocaleString() : 'N/A';
-                    let actionsHtml = '';
-                    if (app.status === 'REQUESTED') actionsHtml += `<button class="btn-primary" onclick="confirmAppointment(${app.id})">Confirm</button>`;
-                    else if (app.status === 'CONFIRMED') actionsHtml += `<button class="btn-secondary" onclick="completeAppointment(${app.id})">Complete</button>`;
-                    if (app.status !== 'CANCELLED' && app.status !== 'COMPLETED') actionsHtml += `<button class="btn-destructive" onclick="cancelAppointment(${app.id})">Cancel</button>`;
-                    actionsHtml += `<button class="btn-secondary" onclick="openReportAction(${app.id}, ${app.patientId})">Report</button>`;
-                    actionsHtml += `<button class="btn-secondary" onclick="openPrescriptionAction(${app.id}, ${app.patientId})">Prescription</button>`;
-
-                    const card = document.createElement('article');
-                    card.className = 'history-card';
-                    card.innerHTML = `<div class="section-header" style="margin-bottom: 8px;"><h3>${app.patientName || app.patientId}</h3><span class="status-badge ${app.status === 'REQUESTED' ? 'status-requested' : 'status-' + app.status.toLowerCase()}">${app.status}</span></div><p>${app.reason || 'N/A'}</p><p>${startStr} - ${endStr}</p>${app.status === 'CANCELLED' && app.cancellationReason ? `<p class="text-danger">${app.cancellationReason}</p>` : ''}<div class="field"><label>Doctor notes</label><textarea id="notes-${app.id}">${app.doctorNotes || ''}</textarea><button class="btn-secondary" onclick="saveNotes(${app.id})">Save Notes</button></div><div class="horizontal-actions" style="margin-top: 12px;">${actionsHtml}</div>`;
-                    container.appendChild(card);
+            const upcoming = appointments.filter(app => new Date(app.startDateTime) >= now);
+            const pastRaw = appointments.filter(app => new Date(app.startDateTime) < now);
+            const pastSearch = (document.getElementById('pastSearchInput')?.value || '').trim().toLowerCase();
+            const pastSort = document.getElementById('pastSortOrder')?.value || 'newest';
+            const past = pastRaw
+                .filter(app => !pastSearch || (app.patientName || '').toLowerCase().includes(pastSearch))
+                .sort((a, b) => {
+                    const da = new Date(a.startDateTime).getTime();
+                    const db = new Date(b.startDateTime).getTime();
+                    return pastSort === 'oldest' ? da - db : db - da;
                 });
-            };
 
-            renderList(appointments.filter(app => new Date(app.startDateTime) >= now), upcomingContainer, "No upcoming appointments yet.");
-            renderList(appointments.filter(app => new Date(app.startDateTime) < now), pastContainer, "No past appointments found.");
+            renderUpcomingList(upcoming, upcomingContainer);
+            renderPastAccordion(past, pastContainer);
+        }
+
+        function renderUpcomingList(list, container) {
+            container.innerHTML = '';
+            if (list.length === 0) {
+                container.innerHTML = `<div class="empty-state"><p>No upcoming appointments yet.</p></div>`;
+                return;
+            }
+
+            list.forEach(app => {
+                const startStr = app.startDateTime ? new Date(app.startDateTime).toLocaleString() : 'N/A';
+                const endStr = app.endDateTime ? new Date(app.endDateTime).toLocaleString() : 'N/A';
+                let actionsHtml = '';
+                if (app.status === 'REQUESTED') actionsHtml += `<button class="btn-primary" onclick="confirmAppointment(${app.id})">Confirm</button>`;
+                else if (app.status === 'CONFIRMED') actionsHtml += `<button class="btn-secondary" onclick="completeAppointment(${app.id})">Complete</button>`;
+                if (app.status !== 'CANCELLED' && app.status !== 'COMPLETED') actionsHtml += `<button class="btn-destructive" onclick="cancelAppointment(${app.id})">Cancel</button>`;
+                if (app.status !== 'CANCELLED') {
+                    actionsHtml += `<button class="btn-secondary" onclick="openPrescriptionAction(${app.id}, ${app.patientId}, '${escapeHtml(app.patientName || 'Patient')}')">Prescription</button>`;
+                }
+                actionsHtml += `<button class="btn-secondary" onclick="openAppointmentDetails(${app.id}, ${app.patientId}, '${escapeHtml(app.patientName || 'Patient')}')">Details</button>`;
+
+                const card = document.createElement('article');
+                card.className = 'history-card';
+                const readOnly = app.status === 'CANCELLED';
+                card.innerHTML = `<div class="section-header" style="margin-bottom: 8px;"><h3>${app.patientName || app.patientId}</h3><div class="accordion-meta"><span class="status-badge ${app.status === 'REQUESTED' ? 'status-requested' : 'status-' + app.status.toLowerCase()}">${app.status}</span>${buildReviewBadge(app)}</div></div><p>${app.reason || 'N/A'}</p><p>${startStr} - ${endStr}</p>${app.status === 'CANCELLED' && app.cancellationReason ? `<p class="text-danger">${app.cancellationReason}</p>` : ''}<div class="page-stack" style="margin-top:12px;"><div class="field"><label>Diagnosis</label><textarea id="diag-${app.id}" rows="2" placeholder="Primary diagnosis" ${readOnly ? 'disabled' : ''}>${escapeHtml(app.diagnosis || '')}</textarea></div><div class="field"><label>Clinical notes</label><textarea id="clinical-${app.id}" rows="3" placeholder="Clinical findings and notes" ${readOnly ? 'disabled' : ''}>${escapeHtml(app.doctorNotes || '')}</textarea></div><div class="field"><label>Follow-up instructions</label><textarea id="follow-${app.id}" rows="2" placeholder="Follow-up / home care" ${readOnly ? 'disabled' : ''}>${escapeHtml(app.followUpInstructions || '')}</textarea></div>${readOnly ? '' : `<button class="btn-secondary" type="button" onclick="saveClinicalRecord(${app.id})">Save Notes</button>`}</div><div class="horizontal-actions" style="margin-top: 12px;">${actionsHtml}</div>`;
+                container.appendChild(card);
+            });
+        }
+
+        function renderPastAccordion(list, container) {
+            container.innerHTML = '';
+            if (list.length === 0) {
+                container.innerHTML = `<div class="empty-state"><p>No past appointments found.</p></div>`;
+                return;
+            }
+            const wrap = document.createElement('div');
+            wrap.className = 'accordion-list';
+
+            list.forEach(app => {
+                const when = app.startDateTime ? new Date(app.startDateTime).toLocaleString() : 'N/A';
+                const isExpanded = expandedPastAppointmentId === app.id;
+                const readOnly = app.status === 'CANCELLED';
+                const item = document.createElement('article');
+                item.className = `accordion-item ${isExpanded ? 'expanded' : ''}`;
+                item.innerHTML = `
+                    <button class="accordion-trigger" type="button" onclick="togglePastAppointment(${app.id})">
+                        <div>
+                            <strong>${escapeHtml(app.patientName || 'Patient')}</strong>
+                            <p class="section-copy">${when}</p>
+                        </div>
+                        <div class="accordion-meta">
+                            <span class="status-badge ${app.status === 'REQUESTED' ? 'status-requested' : 'status-' + app.status.toLowerCase()}">${app.status}</span>
+                            ${buildReviewBadge(app)}
+                        </div>
+                    </button>
+                    <div class="accordion-panel">
+                        <div class="accordion-panel-inner">
+                            <p><strong>Reason for visit:</strong> ${escapeHtml(app.reason || 'N/A')}</p>
+                            ${app.status === 'CANCELLED' && app.cancellationReason ? `<p class="text-danger"><strong>Cancellation reason:</strong> ${escapeHtml(app.cancellationReason)}</p>` : ''}
+                            <div class="field"><label>Diagnosis</label><textarea id="diag-${app.id}" rows="2" ${readOnly ? 'disabled' : ''}>${escapeHtml(app.diagnosis || '')}</textarea></div>
+                            <div class="field"><label>Clinical notes</label><textarea id="clinical-${app.id}" rows="3" ${readOnly ? 'disabled' : ''}>${escapeHtml(app.doctorNotes || '')}</textarea></div>
+                            <div class="field"><label>Follow-up instructions</label><textarea id="follow-${app.id}" rows="2" ${readOnly ? 'disabled' : ''}>${escapeHtml(app.followUpInstructions || '')}</textarea></div>
+                            <div class="horizontal-actions">
+                                ${readOnly ? '' : `<button class="btn-secondary" type="button" onclick="saveClinicalRecord(${app.id})">Save Notes</button>`}
+                                ${readOnly ? '' : `<button class="btn-secondary" type="button" onclick="openPrescriptionAction(${app.id}, ${app.patientId}, '${escapeHtml(app.patientName || 'Patient')}')">Prescription</button>`}
+                                <button class="btn-secondary" type="button" onclick="openAppointmentDetails(${app.id}, ${app.patientId}, '${escapeHtml(app.patientName || 'Patient')}')">Details</button>
+                            </div>
+                        </div>
+                    </div>`;
+                wrap.appendChild(item);
+            });
+
+            container.appendChild(wrap);
+        }
+
+        function togglePastAppointment(appointmentId) {
+            expandedPastAppointmentId = expandedPastAppointmentId === appointmentId ? null : appointmentId;
+            renderAppointments(getFilteredAppointments());
+        }
+
+        function getFilteredAppointments() {
+            const statusFilter = (document.getElementById('statusFilter').value || '').trim().toUpperCase();
+            const fromDateValue = document.getElementById('fromDateFilter').value;
+            const toDateValue = document.getElementById('toDateFilter').value;
+            const fromDate = fromDateValue ? new Date(`${fromDateValue}T00:00:00`) : null;
+            const toDate = toDateValue ? new Date(`${toDateValue}T23:59:59`) : null;
+            return allAppointments.filter(app => {
+                if (!app.startDateTime) return false;
+                const appDate = new Date(app.startDateTime);
+                const matchesStatus = !statusFilter || (app.status || '').toUpperCase() === statusFilter;
+                const matchesFrom = !fromDate || appDate >= fromDate;
+                const matchesTo = !toDate || appDate <= toDate;
+                return matchesStatus && matchesFrom && matchesTo;
+            });
+        }
+
+        function buildReviewBadge(app) {
+            if ((app.status || '').toUpperCase() !== 'COMPLETED' && (app.status || '').toUpperCase() !== 'CANCELLED') {
+                return '';
+            }
+            const reviewStatus = (app.reviewStatus || 'NOT_READY').toUpperCase();
+            const tooltip = buildReviewTooltipText(app, reviewStatus);
+            if (reviewStatus === 'SUMMARY_SENT') {
+                return `<span class="review-badge-wrap"><span class="review-badge review-sent">Summary Sent to Patient</span><button type="button" class="badge-help-btn" onclick="toggleBadgeTooltip(event)" aria-label="Review status help">i</button><span class="badge-tooltip">${escapeHtml(tooltip)}</span></span>`;
+            }
+            if (reviewStatus === 'READY_FOR_ADMIN') {
+                return `<span class="review-badge-wrap"><span class="review-badge review-ready">Ready for Admin Review</span><button type="button" class="badge-help-btn" onclick="toggleBadgeTooltip(event)" aria-label="Review status help">i</button><span class="badge-tooltip">${escapeHtml(tooltip)}</span></span>`;
+            }
+            return `<span class="review-badge-wrap"><span class="review-badge review-not-ready">Incomplete documentation</span><button type="button" class="badge-help-btn" onclick="toggleBadgeTooltip(event)" aria-label="Review status help">i</button><span class="badge-tooltip">${escapeHtml(tooltip)}</span></span>`;
+        }
+
+        function buildReviewTooltipText(app, reviewStatus) {
+            if (reviewStatus === 'SUMMARY_SENT') {
+                return 'Final visit summary has been emailed to the patient.';
+            }
+            if (reviewStatus === 'READY_FOR_ADMIN') {
+                return 'Appointment is complete and ready for admin review.';
+            }
+            const missing = Array.isArray(app.missingDocumentation) ? app.missingDocumentation : [];
+            const labels = missing.map(key => {
+                if (key === 'clinicalNotes') return 'clinical notes';
+                return key;
+            });
+            if (!labels.length) {
+                return 'Missing diagnosis, clinical notes and prescription';
+            }
+            if (labels.length === 1) {
+                return `Missing ${labels[0]}`;
+            }
+            if (labels.length === 2) {
+                return `Missing ${labels[0]} and ${labels[1]}`;
+            }
+            return `Missing ${labels.slice(0, -1).join(', ')} and ${labels[labels.length - 1]}`;
+        }
+
+        function toggleBadgeTooltip(event) {
+            event.preventDefault();
+            event.stopPropagation();
+            const wrap = event.currentTarget.closest('.review-badge-wrap');
+            if (!wrap) return;
+            const willOpen = !wrap.classList.contains('open');
+            document.querySelectorAll('.review-badge-wrap.open').forEach(el => el.classList.remove('open'));
+            if (willOpen) {
+                wrap.classList.add('open');
+            }
         }
 
         async function confirmAppointment(id) {
@@ -263,18 +598,32 @@
         }
         function cancelAppointment(id) { openCancellationModal(id); }
 
-        async function saveNotes(id) {
-            const notes = document.getElementById(`notes-${id}`).value;
-            if (!notes) { showError("Notes cannot be empty"); return; }
+        async function saveClinicalRecord(id) {
+            const diagnosis = document.getElementById(`diag-${id}`)?.value ?? '';
+            const clinicalNotes = document.getElementById(`clinical-${id}`)?.value ?? '';
+            const followUpInstructions = document.getElementById(`follow-${id}`)?.value ?? '';
             try {
-                const response = await fetch(`${API_BASE}/${id}/notes`, { method: 'PUT', headers: getAuthHeaders(), body: JSON.stringify({ doctorNotes: notes }) });
-                if (!response.ok) throw new Error('Failed to save notes');
-                showSuccess('Notes updated!');
+                const response = await fetch(`${API_BASE}/${id}/notes`, {
+                    method: 'PUT',
+                    headers: getAuthHeaders(),
+                    body: JSON.stringify({ diagnosis, clinicalNotes, followUpInstructions })
+                });
+                if (!response.ok) throw new Error('Failed to save clinical record');
+                showSuccess('Notes saved.');
                 loadAppointments();
             } catch (error) { showError(error.message); }
         }
 
         async function completeAppointment(id) {
+            const diagnosis = (document.getElementById(`diag-${id}`)?.value || '').trim();
+            const clinicalNotes = (document.getElementById(`clinical-${id}`)?.value || '').trim();
+            const appointment = allAppointments.find(a => a.id === id);
+            const hasPrescription = !!appointment?.hasPrescriptionForAppointment;
+            if (!diagnosis || !clinicalNotes || !hasPrescription) {
+                showError('Complete diagnosis, notes and prescription before this appointment can be reviewed by admin.');
+                return;
+            }
+
             if (!(await showConfirm("Mark appointment as completed?"))) return;
             try {
                 const response = await fetch(`${API_BASE}/${id}/status`, { method: 'PUT', headers: getAuthHeaders(), body: JSON.stringify({ status: 'COMPLETED' }) });
@@ -294,35 +643,162 @@
             });
         }
 
-        function openReportAction(appointmentId, patientProfileId) {
-            showSuccess(`Report action selected for appointment #${appointmentId}.`);
-        }
-
-        async function openPrescriptionAction(appointmentId, patientProfileId) {
+        async function openPrescriptionAction(appointmentId, patientProfileId, patientName) {
             if (!currentDoctorUserId) {
                 showError('Doctor context not loaded yet');
                 return;
             }
-            const notes = prompt('Enter prescription notes for this consultation:');
-            if (notes === null) return;
+            selectedPrescriptionContext = { appointmentId, patientProfileId, patientName };
+            document.getElementById('prescriptionPatientName').textContent = patientName;
+            document.getElementById('prescriptionAppointmentRef').textContent = `#${appointmentId}`;
+            document.getElementById('prescriptionNotes').value = '';
+            document.getElementById('prescriptionItemsContainer').innerHTML = '';
+            addPrescriptionRow();
+            document.getElementById('prescriptionModal').classList.remove('hidden');
+        }
+
+        function updateMedicineRowNumbers() {
+            const cards = document.querySelectorAll('#prescriptionItemsContainer .medicine-row');
+            cards.forEach((card, index) => {
+                const title = card.querySelector('.medicine-row-title');
+                if (title) title.textContent = `Medicine ${index + 1}`;
+            });
+        }
+
+        function addPrescriptionRow() {
+            const container = document.getElementById('prescriptionItemsContainer');
+            const row = document.createElement('div');
+            row.className = 'detail-card medicine-row';
+            row.innerHTML = `
+                <h3 class="medicine-row-title" style="margin: 0 0 12px 0;">Medicine</h3>
+                <div class="form-grid">
+                    <div class="field"><label>Medicine name</label><input type="text" class="rx-medicine-name" required></div>
+                    <div class="field"><label>Dosage</label><input type="text" class="rx-dosage" required></div>
+                    <div class="field"><label>Frequency</label><input type="text" class="rx-frequency" required></div>
+                    <div class="field"><label>Duration (days)</label><input type="number" min="1" class="rx-duration" required></div>
+                </div>
+                <div class="field">
+                    <label>Notes</label>
+                    <textarea class="rx-instructions" rows="2" placeholder="Optional medicine instructions"></textarea>
+                </div>
+                <div class="horizontal-actions">
+                    <button type="button" class="btn-destructive" onclick="removePrescriptionRow(this)">Remove</button>
+                </div>
+            `;
+            container.appendChild(row);
+            updateMedicineRowNumbers();
+        }
+
+        function removePrescriptionRow(button) {
+            const row = button.closest('.medicine-row');
+            if (row) row.remove();
+            updateMedicineRowNumbers();
+        }
+
+        async function savePrescription() {
+            if (!selectedPrescriptionContext) return;
+            const items = Array.from(document.querySelectorAll('#prescriptionItemsContainer .detail-card')).map(card => ({
+                medicineName: card.querySelector('.rx-medicine-name').value.trim(),
+                dosage: card.querySelector('.rx-dosage').value.trim(),
+                frequency: card.querySelector('.rx-frequency').value.trim(),
+                durationDays: parseInt(card.querySelector('.rx-duration').value || '0', 10),
+                instructions: card.querySelector('.rx-instructions').value.trim()
+            })).filter(item => item.medicineName && item.dosage && item.frequency && item.durationDays > 0);
+
+            if (items.length === 0) {
+                showError('Please add at least one valid medicine row.');
+                return;
+            }
             try {
                 const response = await fetch('/api/prescriptions', {
                     method: 'POST',
                     headers: getAuthHeaders(),
                     body: JSON.stringify({
                         doctorId: currentDoctorUserId,
-                        patientId: patientProfileId,
+                        patientId: selectedPrescriptionContext.patientProfileId,
+                        appointmentId: selectedPrescriptionContext.appointmentId,
                         reportId: null,
-                        notes: notes,
-                        items: []
+                        notes: document.getElementById('prescriptionNotes').value.trim(),
+                        items: items
                     })
                 });
                 if (!response.ok) throw new Error('Failed to create prescription');
-                showSuccess('Prescription action completed');
+                showSuccess('Prescription saved and emailed to patient.');
+                closePrescriptionModal();
+                await loadAppointments();
             } catch (error) {
                 showError(error.message);
             }
         }
+
+        function closePrescriptionModal() {
+            document.getElementById('prescriptionModal').classList.add('hidden');
+            selectedPrescriptionContext = null;
+        }
+
+        async function openAppointmentDetails(appointmentId, patientProfileId, patientName) {
+            document.getElementById('appointmentDetailsTitle').textContent = `Appointment Details: #${appointmentId}`;
+            const body = document.getElementById('appointmentDetailsBody');
+            body.innerHTML = '<p>Loading details...</p>';
+            document.getElementById('appointmentDetailsModal').classList.remove('hidden');
+            try {
+                const response = await fetch(`/api/doctor/${currentDoctorUserId}/patient-history?patientProfileId=${patientProfileId}`, {
+                    headers: { 'Authorization': `Bearer ${localStorage.getItem('jwtToken')}` }
+                });
+                if (!response.ok) throw new Error('Failed to load appointment details');
+                const payload = await response.json();
+                const patient = payload.patient || {};
+                const completed = payload.completedAppointments || [];
+                const prescriptions = payload.prescriptions || [];
+                const reports = payload.reports || [];
+
+                body.innerHTML = `
+                    <article class="history-card">
+                        <h3>Patient demographics</h3>
+                        <p>Name: ${escapeHtml(patient.fullName || patientName)}</p>
+                        <p>Email: ${escapeHtml(patient.email || '-')}</p>
+                        <p>DOB: ${escapeHtml(patient.dob || '-')}</p>
+                        <p>Gender: ${escapeHtml(patient.gender || '-')}</p>
+                        <p>Blood Group: ${escapeHtml(patient.bloodGroup || '-')}</p>
+                        <p>Phone: ${escapeHtml(patient.phone || '-')}</p>
+                    </article>
+                    <article class="history-card">
+                        <h3>Previous completed appointments</h3>
+                        ${completed.length ? completed.map(a => `<p>${new Date(a.startDateTime).toLocaleString()} - ${escapeHtml(a.reason || 'No reason')}</p>`).join('') : '<p>No completed appointments found.</p>'}
+                    </article>
+                    <article class="history-card">
+                        <h3>Previous prescriptions</h3>
+                        ${prescriptions.length ? prescriptions.map(p => `<p>#${p.id} - ${new Date(p.createdAt).toLocaleDateString()} - ${escapeHtml(p.notes || 'No notes')}</p>`).join('') : '<p>No prescriptions found.</p>'}
+                    </article>
+                    <article class="history-card">
+                        <h3>Previous medical reports</h3>
+                        ${reports.length ? reports.map(r => `<p>${escapeHtml(r.title || 'Report')} - ${new Date(r.createdAt).toLocaleDateString()}</p>`).join('') : '<p>No reports found.</p>'}
+                    </article>
+                `;
+            } catch (error) {
+                body.innerHTML = `<p class="text-danger">${escapeHtml(error.message)}</p>`;
+            }
+        }
+
+        function closeAppointmentDetailsModal() {
+            document.getElementById('appointmentDetailsModal').classList.add('hidden');
+        }
+
+        function escapeHtml(unsafe) {
+            if (!unsafe) return '';
+            return unsafe
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+        }
+
+        document.addEventListener('click', (event) => {
+            if (!event.target.closest('.review-badge-wrap')) {
+                document.querySelectorAll('.review-badge-wrap.open').forEach(el => el.classList.remove('open'));
+            }
+        });
 
         window.onload = loadAppointments;
     </script>

@@ -1,5 +1,6 @@
 package com.healsync.entity;
 
+import com.healsync.enums.AppointmentReviewStatus;
 import com.healsync.enums.AppointmentStatus;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
@@ -9,6 +10,7 @@ import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Entity
 @Table(name = "appointments")
@@ -47,6 +49,12 @@ public class Appointment {
     private String doctorNotes;
 
     @Column(columnDefinition = "TEXT")
+    private String diagnosis;
+
+    @Column(columnDefinition = "TEXT")
+    private String followUpInstructions;
+
+    @Column(columnDefinition = "TEXT")
     private String cancellationReason;
 
     @CreationTimestamp
@@ -62,4 +70,13 @@ public class Appointment {
 
     @Transient
     private String patientName;
+
+    @Transient
+    private AppointmentReviewStatus reviewStatus = AppointmentReviewStatus.NOT_READY;
+
+    @Transient
+    private boolean hasPrescriptionForAppointment;
+
+    @Transient
+    private List<String> missingDocumentation;
 }

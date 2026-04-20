@@ -16,6 +16,7 @@ import com.healsync.entity.DoctorProfile;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -40,6 +41,7 @@ public class DoctorController {
 
     @PostMapping("/availability")
     public ResponseEntity<?> addAvailability(@RequestBody AvailabilityRequest req) {
+        validateSelfAccess(req.getDoctorId());
         for (String day : req.getDays()) {
             DoctorAvailability slot = new DoctorAvailability();
             slot.setDoctorId(req.getDoctorId());
@@ -53,12 +55,14 @@ public class DoctorController {
 
     @DeleteMapping("/availability/{id}")
     public ResponseEntity<?> deleteAvailability(@PathVariable Long id) {
-        doctorService.deleteAvailability(id);
+        Long authDoctorId = getAuthenticatedUserId();
+        doctorService.deleteAvailabilityForDoctor(id, authDoctorId);
         return ResponseEntity.ok().build();
     }
 
     @PostMapping("/leave")
     public ResponseEntity<?> addLeave(@RequestBody DoctorLeaveRequest request) {
+        validateSelfAccess(request.getDoctorId());
         return ResponseEntity.ok(doctorService.addLeave(
                 request.getDoctorId(),
                 request.getFromDate(),
@@ -68,24 +72,36 @@ public class DoctorController {
 
     @GetMapping("/leave/{doctorId}")
     public ResponseEntity<?> getLeaves(@PathVariable Long doctorId) {
+        validateSelfAccess(doctorId);
         return ResponseEntity.ok(doctorService.getLeaves(doctorId));
     }
 
     @DeleteMapping("/leave/{id}")
     public ResponseEntity<?> deleteLeave(@PathVariable Long id) {
-        doctorService.deleteLeave(id);
+        Long authDoctorId = getAuthenticatedUserId();
+        doctorService.deleteLeaveForDoctor(id, authDoctorId);
         return ResponseEntity.ok().build();
     }
 
     @GetMapping("/dashboard-summary/{doctorId}")
     public ResponseEntity<DoctorDashboardSummaryDTO> getDashboardSummary(@PathVariable Long doctorId) {
+        validateSelfAccess(doctorId);
         return ResponseEntity.ok(doctorService.getDoctorDashboardSummary(doctorId));
+    }
+
+    @GetMapping("/{doctorId}/patient-history")
+    public ResponseEntity<?> getPatientHistory(
+            @PathVariable Long doctorId,
+            @RequestParam Long patientProfileId) {
+        validateSelfAccess(doctorId);
+        return ResponseEntity.ok(doctorService.getPatientHistoryForDoctor(doctorId, patientProfileId));
     }
 
     @PostMapping("/{doctorId}/upload-photo")
     public ResponseEntity<?> uploadProfilePhoto(
             @PathVariable Long doctorId,
             @RequestParam("file") MultipartFile file) {
+        validateSelfAccess(doctorId);
 
         // 1. Store File
         String fileUrl = fileStorageService.storeFile(file);
@@ -104,6 +120,7 @@ public class DoctorController {
 
     @GetMapping("/{doctorId}/profile")
     public ResponseEntity<?> getProfile(@PathVariable Long doctorId) {
+        validateSelfAccess(doctorId);
         DoctorProfile profile = doctorProfileRepository.findByUserId(doctorId)
                 .orElseThrow(() -> new RuntimeException("Doctor profile not found"));
 
@@ -126,6 +143,7 @@ public class DoctorController {
 
     @PutMapping("/{doctorId}/profile")
     public ResponseEntity<?> updateProfile(@PathVariable Long doctorId, @RequestBody DoctorProfileUpdateRequest request) {
+        validateSelfAccess(doctorId);
         DoctorProfile profile = doctorProfileRepository.findByUserId(doctorId)
                 .orElseThrow(() -> new RuntimeException("Doctor profile not found"));
         User user = userRepository.findById(doctorId)
@@ -156,5 +174,22 @@ public class DoctorController {
                 "experienceYears", saved.getExperienceYears(),
                 "licenseNumber", saved.getLicenseNumber(),
                 "email", user.getEmail()));
+    }
+
+    private void validateSelfAccess(Long doctorUserId) {
+        Long authUserId = getAuthenticatedUserId();
+        if (!authUserId.equals(doctorUserId)) {
+            throw new RuntimeException("Unauthorized access for doctor resource");
+        }
+    }
+
+    private Long getAuthenticatedUserId() {
+        Authentication authentication = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || authentication.getName() == null) {
+            throw new RuntimeException("Unauthorized");
+        }
+        return userRepository.findByEmail(authentication.getName())
+                .map(User::getId)
+                .orElseThrow(() -> new RuntimeException("Authenticated user not found"));
     }
 }

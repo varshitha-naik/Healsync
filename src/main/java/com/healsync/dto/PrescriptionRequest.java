@@ -7,6 +7,7 @@ import java.util.List;
 public class PrescriptionRequest {
     private Long doctorId;
     private Long patientId;
+    private Long appointmentId;
     private Long reportId; // Optional, links to a medical report
     private String notes;
     private List<PrescriptionItemRequest> items;

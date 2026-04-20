@@ -24,6 +24,10 @@ import com.healsync.repository.DoctorAvailabilityRepository;
 import com.healsync.repository.DoctorLeaveRepository;
 import com.healsync.repository.DoctorProfileRepository;
 import com.healsync.repository.PatientProfileRepository;
+import com.healsync.repository.PrescriptionItemRepository;
+import com.healsync.repository.PrescriptionRepository;
+import com.healsync.repository.MedicalReportRepository;
+import com.healsync.repository.ReportAttachmentRepository;
 import com.healsync.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -38,6 +42,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.HashMap;
 import java.util.stream.Collectors;
 
 @Service
@@ -52,6 +57,10 @@ public class DoctorService {
     private final DoctorProfileRepository doctorProfileRepository;
     private final ClinicRepository clinicRepository;
     private final FileStorageService fileStorageService;
+    private final PrescriptionRepository prescriptionRepository;
+    private final PrescriptionItemRepository prescriptionItemRepository;
+    private final MedicalReportRepository medicalReportRepository;
+    private final ReportAttachmentRepository reportAttachmentRepository;
 
     public List<AdminDoctorDTO> getAllDoctorsAdmin() {
         List<AdminDoctorDTO> result = new ArrayList<>();
@@ -269,6 +278,18 @@ public class DoctorService {
     }
 
     public DoctorAvailability addAvailability(DoctorAvailability availability) {
+        if (availability == null || availability.getDoctorId() == null || availability.getDayOfWeek() == null
+                || availability.getStartTime() == null || availability.getEndTime() == null) {
+            throw new RuntimeException("Invalid availability payload");
+        }
+        boolean overlapExists = doctorAvailabilityRepository.existsByDoctorIdAndDayOfWeekAndStartTimeLessThanAndEndTimeGreaterThan(
+                availability.getDoctorId(),
+                availability.getDayOfWeek(),
+                availability.getEndTime(),
+                availability.getStartTime());
+        if (overlapExists) {
+            throw new RuntimeException("Availability already exists for this day and time.");
+        }
         return doctorAvailabilityRepository.save(availability);
     }
 
@@ -278,6 +299,11 @@ public class DoctorService {
         }
         if (toDate.isBefore(fromDate)) {
             throw new RuntimeException("To date must be on or after from date.");
+        }
+        boolean overlapLeaveExists = doctorLeaveRepository.existsByDoctorIdAndFromDateLessThanEqualAndToDateGreaterThanEqual(
+                doctorId, toDate, fromDate);
+        if (overlapLeaveExists) {
+            throw new RuntimeException("Leave has already been applied for the selected dates.");
         }
 
         DoctorLeave leave = new DoctorLeave();
@@ -292,7 +318,25 @@ public class DoctorService {
         doctorAvailabilityRepository.deleteById(id);
     }
 
+    public void deleteAvailabilityForDoctor(Long id, Long doctorUserId) {
+        DoctorAvailability slot = doctorAvailabilityRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Availability slot not found"));
+        if (slot.getDoctorId() == null || !slot.getDoctorId().equals(doctorUserId)) {
+            throw new RuntimeException("Unauthorized: availability slot does not belong to this doctor");
+        }
+        doctorAvailabilityRepository.deleteById(id);
+    }
+
     public void deleteLeave(Long id) {
+        doctorLeaveRepository.deleteById(id);
+    }
+
+    public void deleteLeaveForDoctor(Long id, Long doctorUserId) {
+        DoctorLeave leave = doctorLeaveRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Leave entry not found"));
+        if (leave.getDoctorId() == null || !leave.getDoctorId().equals(doctorUserId)) {
+            throw new RuntimeException("Unauthorized: leave entry does not belong to this doctor");
+        }
         doctorLeaveRepository.deleteById(id);
     }
 
@@ -357,6 +401,70 @@ public class DoctorService {
                 .missingAvailabilityDates(missingDates)
                 .nextAppointmentSummary(nextAppointmentSummary)
                 .build();
+    }
+
+    public Map<String, Object> getPatientHistoryForDoctor(Long doctorUserId, Long patientProfileId) {
+        DoctorProfile doctorProfile = doctorProfileRepository.findByUserId(doctorUserId)
+                .orElseThrow(() -> new RuntimeException("Doctor profile not found"));
+        PatientProfile patientProfile = patientProfileRepository.findById(patientProfileId)
+                .orElseThrow(() -> new RuntimeException("Patient profile not found"));
+        User patientUser = userRepository.findById(patientProfile.getUserId())
+                .orElse(null);
+
+        List<Appointment> allPatientAppointments = appointmentRepository.findByPatientId(patientProfileId).stream()
+                .filter(a -> a.getDoctorId() != null && a.getDoctorId().equals(doctorProfile.getId()))
+                .sorted(Comparator.comparing(Appointment::getStartDateTime).reversed())
+                .toList();
+
+        LocalDateTime now = LocalDateTime.now();
+        List<Appointment> pastAppointments = allPatientAppointments.stream()
+                .filter(a -> a.getStartDateTime() != null && a.getStartDateTime().isBefore(now))
+                .toList();
+        List<Appointment> completedAppointments = pastAppointments.stream()
+                .filter(a -> a.getStatus() == AppointmentStatus.COMPLETED)
+                .toList();
+
+        List<Map<String, Object>> prescriptions = prescriptionRepository.findByPatientIdOrderByCreatedAtDesc(patientProfileId).stream()
+                .filter(p -> p.getDoctorId() != null && p.getDoctorId().equals(doctorProfile.getId()))
+                .map(p -> {
+                    Map<String, Object> row = new HashMap<>();
+                    row.put("id", p.getId());
+                    row.put("notes", p.getNotes());
+                    row.put("createdAt", p.getCreatedAt());
+                    row.put("items", prescriptionItemRepository.findByPrescriptionId(p.getId()));
+                    return row;
+                })
+                .toList();
+
+        List<Map<String, Object>> reports = medicalReportRepository.findByPatientIdOrderByCreatedAtDesc(patientProfileId).stream()
+                .filter(r -> r.getDoctorId() != null && r.getDoctorId().equals(doctorProfile.getId()))
+                .map(r -> {
+                    Map<String, Object> row = new HashMap<>();
+                    row.put("id", r.getId());
+                    row.put("title", r.getTitle());
+                    row.put("description", r.getDescription());
+                    row.put("reportType", r.getReportType());
+                    row.put("createdAt", r.getCreatedAt());
+                    row.put("attachments", reportAttachmentRepository.findByReportId(r.getId()));
+                    return row;
+                })
+                .toList();
+
+        Map<String, Object> response = new LinkedHashMap<>();
+        response.put("patient", Map.of(
+                "patientProfileId", patientProfile.getId(),
+                "patientUserId", patientProfile.getUserId(),
+                "fullName", patientProfile.getFullName(),
+                "email", patientUser != null ? patientUser.getEmail() : "",
+                "dob", patientProfile.getDob(),
+                "gender", patientProfile.getGender(),
+                "bloodGroup", patientProfile.getBloodGroup() != null ? patientProfile.getBloodGroup() : "",
+                "phone", patientProfile.getPhone() != null ? patientProfile.getPhone() : ""));
+        response.put("pastAppointments", pastAppointments);
+        response.put("completedAppointments", completedAppointments);
+        response.put("prescriptions", prescriptions);
+        response.put("reports", reports);
+        return response;
     }
 
     public String resolveDoctorPhotoUrl(DoctorProfile profile) {

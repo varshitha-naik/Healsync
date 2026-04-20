@@ -1,6 +1,7 @@
 package com.healsync.controller;
 
 import com.healsync.service.AuthService;
+import com.healsync.service.AdminMedicalSummaryService;
 import com.healsync.service.DoctorService;
 import com.healsync.dto.AdminDashboardSummaryDTO;
 import com.healsync.dto.AdminPatientsByDoctorDTO;
@@ -11,9 +12,13 @@ import com.healsync.enums.UserStatus;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
+import com.healsync.repository.UserRepository;
+import com.healsync.dto.UpdateMedicalSummaryRequest;
 
 @RestController
 @RequestMapping("/api/admin")
@@ -23,6 +28,8 @@ public class AdminController {
 
     private final AuthService authService;
     private final DoctorService doctorService;
+    private final AdminMedicalSummaryService adminMedicalSummaryService;
+    private final UserRepository userRepository;
 
     @PostMapping("/doctors")
     public ResponseEntity<?> createDoctor(@RequestBody CreateDoctorRequest request) {
@@ -61,5 +68,51 @@ public class AdminController {
     public ResponseEntity<?> deleteDoctor(@PathVariable Long id) {
         doctorService.deleteDoctorAdmin(id);
         return ResponseEntity.ok().body("{\"message\": \"Doctor deleted successfully\"}");
+    }
+
+    @GetMapping("/medical-summaries")
+    public ResponseEntity<List<Map<String, Object>>> getPendingMedicalSummaries() {
+        return ResponseEntity.ok(adminMedicalSummaryService.getPendingMedicalSummaries());
+    }
+
+    @GetMapping("/medical-summaries/{appointmentId}")
+    public ResponseEntity<Map<String, Object>> getMedicalSummaryDetails(@PathVariable Long appointmentId) {
+        return ResponseEntity.ok(adminMedicalSummaryService.getSummaryDetails(appointmentId));
+    }
+
+    @PostMapping("/medical-summaries/{appointmentId}/generate")
+    public ResponseEntity<Map<String, Object>> generateMedicalSummary(@PathVariable Long appointmentId, Authentication authentication) {
+        return ResponseEntity.ok(adminMedicalSummaryService.generateSummary(appointmentId, resolveAdminUserId(authentication)));
+    }
+
+    @PutMapping("/medical-summaries/{appointmentId}")
+    public ResponseEntity<Map<String, Object>> saveMedicalSummary(
+            @PathVariable Long appointmentId,
+            @RequestBody UpdateMedicalSummaryRequest request,
+            Authentication authentication) {
+        return ResponseEntity.ok(adminMedicalSummaryService.saveSummary(
+                appointmentId,
+                request.getGeneratedSummary(),
+                resolveAdminUserId(authentication)));
+    }
+
+    @PostMapping("/medical-summaries/{appointmentId}/send")
+    public ResponseEntity<Map<String, Object>> sendMedicalSummary(
+            @PathVariable Long appointmentId,
+            @RequestParam(defaultValue = "false") boolean resend,
+            Authentication authentication) {
+        return ResponseEntity.ok(adminMedicalSummaryService.sendSummary(
+                appointmentId,
+                resend,
+                resolveAdminUserId(authentication)));
+    }
+
+    private Long resolveAdminUserId(Authentication authentication) {
+        if (authentication == null || authentication.getName() == null) {
+            throw new RuntimeException("Unauthorized");
+        }
+        return userRepository.findByEmail(authentication.getName())
+                .map(u -> u.getId())
+                .orElseThrow(() -> new RuntimeException("Authenticated admin user not found"));
     }
 }

@@ -1,11 +1,16 @@
 package com.healsync.dto;
 
-import jakarta.validation.constraints.NotBlank;
 import lombok.Data;
 
 @Data
 public class AppointmentDoctorNotesRequest {
 
-    @NotBlank(message = "Doctor notes are required")
+    private String diagnosis;
+
+    private String clinicalNotes;
+
+    private String followUpInstructions;
+
+    /** Legacy clients: maps to stored clinical notes when clinicalNotes is absent. */
     private String doctorNotes;
 }

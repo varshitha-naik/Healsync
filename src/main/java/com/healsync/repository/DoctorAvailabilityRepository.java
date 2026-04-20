@@ -4,9 +4,16 @@ import com.healsync.entity.DoctorAvailability;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalTime;
 import java.util.List;
 
 @Repository
 public interface DoctorAvailabilityRepository extends JpaRepository<DoctorAvailability, Long> {
     List<DoctorAvailability> findByDoctorId(Long doctorId);
+
+    boolean existsByDoctorIdAndDayOfWeekAndStartTimeLessThanAndEndTimeGreaterThan(
+            Long doctorId,
+            String dayOfWeek,
+            LocalTime endTime,
+            LocalTime startTime);
 }

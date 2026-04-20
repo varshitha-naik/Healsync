@@ -8,11 +8,13 @@ import com.healsync.service.EmailService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/prescriptions")
@@ -24,17 +26,41 @@ public class PrescriptionController {
     private final PatientProfileRepository patientProfileRepository;
     private final DoctorProfileRepository doctorProfileRepository;
     private final UserRepository userRepository;
+    private final AppointmentRepository appointmentRepository;
     private final EmailService emailService;
 
     @PostMapping
     @PreAuthorize("hasRole('DOCTOR')")
-    public ResponseEntity<?> createPrescription(@RequestBody PrescriptionRequest request) {
+    public ResponseEntity<?> createPrescription(@RequestBody PrescriptionRequest request, Authentication authentication) {
+        Long doctorUserId = userRepository.findByEmail(authentication.getName())
+                .map(u -> u.getId())
+                .orElseThrow(() -> new RuntimeException("Authenticated doctor not found"));
+        var doctorProfile = doctorProfileRepository.findByUserId(doctorUserId)
+                .orElseThrow(() -> new RuntimeException("Doctor profile not found"));
+        if (request.getPatientId() == null) {
+            throw new RuntimeException("Patient ID is required");
+        }
+        boolean hasDoctorAppointmentWithPatient = appointmentRepository.findByPatientId(request.getPatientId()).stream()
+                .anyMatch(app -> app.getDoctorId() != null && app.getDoctorId().equals(doctorProfile.getId()));
+        if (!hasDoctorAppointmentWithPatient) {
+            throw new RuntimeException("Unauthorized: patient does not belong to this doctor");
+        }
+        if (request.getAppointmentId() != null) {
+            boolean ownsAppointment = appointmentRepository.findById(request.getAppointmentId())
+                    .map(app -> app.getDoctorId() != null && app.getDoctorId().equals(doctorProfile.getId())
+                            && app.getPatientId() != null && app.getPatientId().equals(request.getPatientId()))
+                    .orElse(false);
+            if (!ownsAppointment) {
+                throw new RuntimeException("Unauthorized: appointment does not belong to this doctor");
+            }
+        }
 
-        // 1. Create Prescription
+        // 1. Create Prescription (no automatic medical report — admin issues patient-facing reports)
         Prescription prescription = new Prescription();
-        prescription.setDoctorId(request.getDoctorId());
+        prescription.setDoctorId(doctorProfile.getId());
         prescription.setPatientId(request.getPatientId());
         prescription.setReportId(request.getReportId());
+        prescription.setAppointmentId(request.getAppointmentId());
         prescription.setNotes(request.getNotes());
 
         Prescription saved = prescriptionRepository.save(prescription);
@@ -58,15 +84,26 @@ public class PrescriptionController {
         // 3. Send Email
         try {
             var patientProfile = patientProfileRepository.findById(request.getPatientId()).orElse(null);
-            var doctorProfile = doctorProfileRepository.findByUserId(request.getDoctorId()).orElse(null);
+            String appointmentDateTime = null;
+            if (request.getAppointmentId() != null) {
+                appointmentDateTime = appointmentRepository.findById(request.getAppointmentId())
+                        .map(app -> app.getStartDateTime() != null ? app.getStartDateTime().toString() : null)
+                        .orElse(null);
+            }
+            List<String> medicineLines = items.stream()
+                    .map(i -> i.getMedicineName() + " - " + i.getDosage() + ", " + i.getFrequency() + ", " + i.getDurationDays() + " day(s)")
+                    .collect(Collectors.toList());
 
             if (patientProfile != null && doctorProfile != null) {
                 var user = userRepository.findById(patientProfile.getUserId()).orElse(null);
                 if (user != null) {
-                    emailService.sendPrescriptionCreated(
+                    emailService.sendPrescriptionSummary(
                             user.getEmail(),
                             patientProfile.getFullName(),
-                            doctorProfile.getFullName());
+                            doctorProfile.getFullName(),
+                            appointmentDateTime,
+                            medicineLines,
+                            request.getNotes());
                 }
             }
         } catch (Exception e) {

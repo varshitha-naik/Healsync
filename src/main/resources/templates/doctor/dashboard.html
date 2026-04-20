@@ -100,6 +100,10 @@
         }
 
         async function loadDashboard() {
+            const loadingEl = document.getElementById('loadingState');
+            const contentEl = document.getElementById('dashboardContent');
+            loadingEl.style.display = 'grid';
+            contentEl.style.display = 'none';
             try {
                 const meResponse = await fetch('/api/auth/me', {
                     headers: { 'Authorization': `Bearer ${token}` }
@@ -107,7 +111,7 @@
                 if (!meResponse.ok) throw new Error('Failed to fetch user context');
                 const user = await meResponse.json();
 
-                const [summaryResponse, appointmentsResponse] = await Promise.all([
+                const [summaryResult, appointmentsResult] = await Promise.allSettled([
                     fetch(`/api/doctor/dashboard-summary/${user.userId}`, {
                         headers: { 'Authorization': `Bearer ${token}` }
                     }),
@@ -116,29 +120,33 @@
                     })
                 ]);
 
-                if (!summaryResponse.ok || !appointmentsResponse.ok) {
-                    throw new Error('Failed to load dashboard data');
-                }
-
-                const summary = await summaryResponse.json();
-                const appointments = await appointmentsResponse.json();
+                const summary = await parseResponseSafe(summaryResult, {
+                    todaysAppointments: 0,
+                    pendingAppointments: 0,
+                    upcomingAppointments: 0,
+                    completedToday: 0,
+                    missingAvailabilityNext3Days: false,
+                    missingAvailabilityDates: [],
+                    nextAppointmentSummary: 'No upcoming appointments today.'
+                });
+                const appointments = await parseResponseSafe(appointmentsResult, []);
 
                 document.getElementById('todayDateLabel').textContent = new Date().toLocaleDateString(undefined, {
                     weekday: 'long', month: 'long', day: 'numeric'
                 });
-                document.getElementById('nextAppointmentText').textContent = summary.nextAppointmentSummary || 'No upcoming appointments today.';
-                document.getElementById('todayCount').textContent = summary.todaysAppointments ?? 0;
-                document.getElementById('pendingCount').textContent = summary.pendingAppointments ?? 0;
-                document.getElementById('upcomingCount').textContent = summary.upcomingAppointments ?? 0;
-                document.getElementById('completedCount').textContent = summary.completedToday ?? 0;
-                const statsTotal = (summary.todaysAppointments ?? 0) + (summary.pendingAppointments ?? 0) + (summary.upcomingAppointments ?? 0) + (summary.completedToday ?? 0);
+                document.getElementById('nextAppointmentText').textContent = summary?.nextAppointmentSummary ?? 'No upcoming appointments today.';
+                document.getElementById('todayCount').textContent = summary?.todaysAppointments ?? 0;
+                document.getElementById('pendingCount').textContent = summary?.pendingAppointments ?? 0;
+                document.getElementById('upcomingCount').textContent = summary?.upcomingAppointments ?? 0;
+                document.getElementById('completedCount').textContent = summary?.completedToday ?? 0;
+                const statsTotal = (summary?.todaysAppointments ?? 0) + (summary?.pendingAppointments ?? 0) + (summary?.upcomingAppointments ?? 0) + (summary?.completedToday ?? 0);
                 document.getElementById('statsEmptyState').style.display = statsTotal === 0 ? 'grid' : 'none';
 
                 const reminder = document.getElementById('availabilityReminder');
                 const availabilityOkBadge = document.getElementById('availabilityOkBadge');
                 const reminderText = document.getElementById('availabilityReminderText');
-                if (summary.missingAvailabilityNext3Days) {
-                    const missingDays = (summary.missingAvailabilityDates || []).join(', ');
+                if (summary?.missingAvailabilityNext3Days) {
+                    const missingDays = (summary?.missingAvailabilityDates || []).join(', ');
                     reminderText.textContent = `You have not set your availability for the next 3 days. Missing dates: ${missingDays}`;
                     reminder.style.display = 'grid';
                     availabilityOkBadge.style.display = 'none';
@@ -155,13 +163,25 @@
                     }
                 }
 
-                renderTodaySchedule(appointments);
-                document.getElementById('loadingState').style.display = 'none';
-                document.getElementById('dashboardContent').style.display = 'grid';
-                showDashboardMessage('');
+                renderTodaySchedule(Array.isArray(appointments) ? appointments : []);
+                const summaryFailed = !isFetchSuccess(summaryResult);
+                const apptsFailed = !isFetchSuccess(appointmentsResult);
+                if (summaryFailed && apptsFailed) {
+                    showDashboardMessage('Some dashboard sections could not be loaded. Showing available data.', 'error');
+                } else if (summaryFailed) {
+                    showDashboardMessage('Unable to load metric summary. Schedule is still available.', 'error');
+                } else if (apptsFailed) {
+                    showDashboardMessage('Unable to load today\'s schedule.', 'error');
+                } else {
+                    showDashboardMessage('');
+                }
             } catch (error) {
                 console.error('Error loading dashboard:', error);
-                showDashboardMessage('Failed to load dashboard data.');
+                applyDashboardSafeFallback();
+                showDashboardMessage('Unable to load dashboard right now. Showing defaults.', 'error');
+            } finally {
+                loadingEl.style.display = 'none';
+                contentEl.style.display = 'grid';
             }
         }
 
@@ -199,6 +219,37 @@
                 `;
                 container.appendChild(item);
             });
+        }
+
+        async function parseResponseSafe(result, fallback) {
+            try {
+                if (result.status !== 'fulfilled') return fallback;
+                const response = result.value;
+                if (!response.ok) return fallback;
+                const json = await response.json();
+                return json ?? fallback;
+            } catch (_e) {
+                return fallback;
+            }
+        }
+
+        function isFetchSuccess(result) {
+            return result.status === 'fulfilled' && !!result.value?.ok;
+        }
+
+        function applyDashboardSafeFallback() {
+            document.getElementById('todayDateLabel').textContent = new Date().toLocaleDateString(undefined, {
+                weekday: 'long', month: 'long', day: 'numeric'
+            });
+            document.getElementById('nextAppointmentText').textContent = 'No upcoming appointments.';
+            document.getElementById('todayCount').textContent = '0';
+            document.getElementById('pendingCount').textContent = '0';
+            document.getElementById('upcomingCount').textContent = '0';
+            document.getElementById('completedCount').textContent = '0';
+            document.getElementById('statsEmptyState').style.display = 'grid';
+            document.getElementById('availabilityReminder').style.display = 'none';
+            document.getElementById('availabilityOkBadge').style.display = 'none';
+            document.getElementById('todaySchedule').innerHTML = '<div class="empty-state"><p>Unable to load today\'s schedule.</p></div>';
         }
 
         function escapeHtml(unsafe) {

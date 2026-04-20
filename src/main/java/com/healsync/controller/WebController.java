@@ -52,6 +52,11 @@ public class WebController {
         return "admin/audit-logs";
     }
 
+    @GetMapping("/admin/medical-summaries")
+    public String medicalSummaries() {
+        return "admin/medical-summaries";
+    }
+
     @GetMapping("/admin/users")
     public String adminUsers() {
         return "admin/users";
