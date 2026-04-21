@@ -12,4 +12,5 @@ public class UpdateDoctorRequest {
     private String specialization;
     private Integer experienceYears;
     private String bio;
+    private Long clinicId;
 }

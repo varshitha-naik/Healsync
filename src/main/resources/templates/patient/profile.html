@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Patient Profile - HealSync</title>
+    <link rel="stylesheet" th:href="@{/css/design-system.css}" href="/css/design-system.css">
+    <style>
+        .file-input-hidden { display: none; }
+        .sticky-actions { position: sticky; bottom: 0; background: #fff; border-top: 1px solid #e2e8f0; padding-top: 12px; margin-top: 16px; }
+    </style>
+</head>
+
+<body>
+    <div class="app-shell">
+        <div th:replace="fragments/patient-header :: header"></div>
+        <div class="app-main">
+            <header class="topbar">
+                <div class="topbar-title-group">
+                    <p class="breadcrumb">Patient / Profile</p>
+                    <h1>Profile</h1>
+                </div>
+            </header>
+
+            <main class="page-content">
+                <section class="card">
+                    <div id="profileMessage" class="alert" style="display:none;"></div>
+                    <div class="profile-hero">
+                        <img id="profileImg" src="/images/default-patient.svg" alt="Profile" class="avatar-circle large" style="object-fit:cover;">
+                        <div>
+                            <h2 id="fullNameDisplay">Loading...</h2>
+                            <p class="section-copy" id="emailDisplay">Loading...</p>
+                        </div>
+                        <div class="horizontal-actions">
+                            <button id="editBtn" type="button" class="btn-secondary" onclick="enableEdit()">Edit Profile</button>
+                        </div>
+                    </div>
+
+                    <div class="details-grid">
+                        <div class="detail-card"><label>Patient ID</label><span id="patientIdDisplay">-</span></div>
+                        <div class="detail-card"><label>Date of Birth</label><span id="dobDisplay">-</span></div>
+                        <div class="detail-card"><label>Gender</label><span id="genderDisplay">-</span></div>
+                        <div class="detail-card"><label>Blood Group</label><span id="bloodGroupDisplay">-</span></div>
+
+                        <div class="detail-card">
+                            <label>Phone</label>
+                            <span id="phoneDisplay">-</span>
+                            <input id="phoneInput" type="text" style="display:none;">
+                        </div>
+                        <div class="detail-card">
+                            <label>Address</label>
+                            <span id="addressDisplay">-</span>
+                            <textarea id="addressInput" rows="2" style="display:none;"></textarea>
+                        </div>
+                        <div class="detail-card">
+                            <label>Emergency Contact Name</label>
+                            <span id="emergencyNameDisplay">-</span>
+                            <input id="emergencyNameInput" type="text" style="display:none;">
+                        </div>
+                        <div class="detail-card">
+                            <label>Emergency Contact Phone</label>
+                            <span id="emergencyPhoneDisplay">-</span>
+                            <input id="emergencyPhoneInput" type="text" style="display:none;">
+                        </div>
+                    </div>
+
+                    <div id="photoEditSection" style="display:none; margin-top:16px;">
+                        <label>Profile photo</label>
+                        <div class="horizontal-actions">
+                            <button type="button" class="btn-secondary" onclick="document.getElementById('photoInput').click()">Change Photo</button>
+                            <span id="selectedPhotoName">No file selected</span>
+                        </div>
+                        <input id="photoInput" class="file-input-hidden" type="file" accept=".jpg,.jpeg,.png" onchange="handlePhotoSelected(event)">
+                        <p class="helper-text">JPG or PNG, maximum 2 MB.</p>
+                    </div>
+
+                    <div id="editActions" class="horizontal-actions sticky-actions" style="display:none;">
+                        <button type="button" class="btn-primary" onclick="saveProfile()">Save</button>
+                        <button type="button" class="btn-secondary" onclick="cancelEdit()">Cancel</button>
+                    </div>
+                </section>
+            </main>
+        </div>
+    </div>
+
+    <script>
+        const token = localStorage.getItem('jwtToken');
+        const defaultImg = '/images/default-patient.svg';
+        let profile = null;
+        let editMode = false;
+        let selectedPhotoFile = null;
+
+        if (!token || localStorage.getItem('userRole') !== 'PATIENT') {
+            window.location.href = '/login';
+        } else {
+            loadProfile();
+        }
+
+        async function loadProfile() {
+            try {
+                const response = await fetch('/api/patient/profile', { headers: { Authorization: `Bearer ${token}` } });
+                if (!response.ok) throw new Error('Unable to load your profile. Please try again.');
+                profile = await response.json();
+                bindProfile();
+                showProfileMessage('', 'success');
+            } catch (error) {
+                showProfileMessage(error.message || 'Unable to load your profile. Please try again.', 'error');
+            }
+        }
+
+        function bindProfile() {
+            if (!profile) return;
+            document.getElementById('fullNameDisplay').textContent = profile.fullName || '-';
+            document.getElementById('emailDisplay').textContent = profile.email || '-';
+            document.getElementById('patientIdDisplay').textContent = profile.userId || '-';
+            document.getElementById('dobDisplay').textContent = profile.dob || '-';
+            document.getElementById('genderDisplay').textContent = profile.gender || '-';
+            document.getElementById('bloodGroupDisplay').textContent = profile.bloodGroup || '-';
+            document.getElementById('phoneDisplay').textContent = profile.phone || '-';
+            document.getElementById('addressDisplay').textContent = profile.address || '-';
+            document.getElementById('emergencyNameDisplay').textContent = profile.emergencyContactName || '-';
+            document.getElementById('emergencyPhoneDisplay').textContent = profile.emergencyContactPhone || '-';
+            document.getElementById('profileImg').src = profile.profilePhotoUrl || defaultImg;
+
+            document.getElementById('phoneInput').value = profile.phone || '';
+            document.getElementById('addressInput').value = profile.address || '';
+            document.getElementById('emergencyNameInput').value = profile.emergencyContactName || '';
+            document.getElementById('emergencyPhoneInput').value = profile.emergencyContactPhone || '';
+        }
+
+        function enableEdit() {
+            editMode = true;
+            toggleEdit(true);
+        }
+
+        function cancelEdit() {
+            editMode = false;
+            selectedPhotoFile = null;
+            document.getElementById('selectedPhotoName').textContent = 'No file selected';
+            bindProfile();
+            toggleEdit(false);
+        }
+
+        function toggleEdit(on) {
+            document.getElementById('editBtn').style.display = on ? 'none' : 'inline-flex';
+            document.getElementById('editActions').style.display = on ? 'flex' : 'none';
+            document.getElementById('photoEditSection').style.display = on ? 'block' : 'none';
+
+            ['phone', 'address', 'emergencyName', 'emergencyPhone'].forEach(prefix => {
+                const display = document.getElementById(`${prefix}Display`);
+                const input = document.getElementById(`${prefix}Input`);
+                if (display && input) {
+                    display.style.display = on ? 'none' : 'inline';
+                    input.style.display = on ? 'block' : 'none';
+                }
+            });
+        }
+
+        function handlePhotoSelected(event) {
+            const file = event.target.files?.[0];
+            if (!file) return;
+            if (!['image/jpeg', 'image/png'].includes(file.type)) {
+                showProfileMessage('Please upload a JPG or PNG image.', 'error');
+                event.target.value = '';
+                return;
+            }
+            if (file.size > 2 * 1024 * 1024) {
+                showProfileMessage('Image must be smaller than 2 MB.', 'error');
+                event.target.value = '';
+                return;
+            }
+            selectedPhotoFile = file;
+            document.getElementById('selectedPhotoName').textContent = file.name;
+            document.getElementById('profileImg').src = URL.createObjectURL(file);
+        }
+
+        async function saveProfile() {
+            try {
+                const payload = {
+                    phone: document.getElementById('phoneInput').value.trim(),
+                    address: document.getElementById('addressInput').value.trim(),
+                    emergencyContactName: document.getElementById('emergencyNameInput').value.trim(),
+                    emergencyContactPhone: document.getElementById('emergencyPhoneInput').value.trim()
+                };
+                const updateResponse = await fetch('/api/patient/profile', {
+                    method: 'PUT',
+                    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                if (!updateResponse.ok) throw new Error('Unable to save profile.');
+
+                if (selectedPhotoFile) {
+                    const fd = new FormData();
+                    fd.append('file', selectedPhotoFile);
+                    const photoResponse = await fetch('/api/patient/profile/photo', {
+                        method: 'POST',
+                        headers: { Authorization: `Bearer ${token}` },
+                        body: fd
+                    });
+                    if (!photoResponse.ok) throw new Error('Unable to upload profile photo.');
+                }
+                showProfileMessage('Profile updated successfully.', 'success');
+                editMode = false;
+                toggleEdit(false);
+                await loadProfile();
+            } catch (error) {
+                showProfileMessage(error.message || 'Unable to save profile.', 'error');
+            }
+        }
+
+        function showProfileMessage(message, type = 'success') {
+            const el = document.getElementById('profileMessage');
+            if (!message) {
+                el.style.display = 'none';
+                return;
+            }
+            el.className = type === 'success' ? 'alert alert-success' : 'alert alert-danger';
+            el.textContent = message;
+            el.style.display = 'block';
+        }
+    </script>
+</body>
+
+</html>

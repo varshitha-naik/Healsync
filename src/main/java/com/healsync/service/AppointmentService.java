@@ -12,6 +12,7 @@ import com.healsync.repository.DoctorLeaveRepository;
 import com.healsync.repository.DoctorProfileRepository;
 import com.healsync.repository.MedicalSummaryReportRepository;
 import com.healsync.repository.PatientProfileRepository;
+import com.healsync.repository.PrescriptionItemRepository;
 import com.healsync.repository.PrescriptionRepository;
 import com.healsync.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -34,6 +35,7 @@ public class AppointmentService {
     private final DoctorProfileRepository doctorProfileRepository;
     private final DoctorLeaveRepository doctorLeaveRepository;
     private final PrescriptionRepository prescriptionRepository;
+    private final PrescriptionItemRepository prescriptionItemRepository;
     private final MedicalSummaryReportRepository medicalSummaryReportRepository;
     private final UserRepository userRepository;
     private final EmailService emailService;
@@ -445,5 +447,60 @@ public class AppointmentService {
         if (appointment.getReviewStatus() != AppointmentReviewStatus.NOT_READY) {
             appointment.setMissingDocumentation(List.of());
         }
+    }
+
+    public java.util.Map<String, Object> getAdminPatientHistory(Long patientUserId, Long doctorUserId) {
+        PatientProfile patient = patientProfileRepository.findByUserId(patientUserId)
+                .orElseThrow(() -> new RuntimeException("Patient profile not found"));
+        DoctorProfile doctor = doctorProfileRepository.findByUserId(doctorUserId)
+                .orElseThrow(() -> new RuntimeException("Doctor profile not found"));
+        String patientEmail = userRepository.findById(patientUserId).map(u -> u.getEmail()).orElse("");
+
+        List<Appointment> appointments = appointmentRepository.findByPatientId(patient.getId()).stream()
+                .filter(a -> a.getDoctorId() != null && a.getDoctorId().equals(doctor.getId()))
+                .sorted(java.util.Comparator.comparing(Appointment::getStartDateTime, java.util.Comparator.nullsLast(java.util.Comparator.reverseOrder())))
+                .toList();
+        List<java.util.Map<String, Object>> appointmentRows = new java.util.ArrayList<>();
+
+        for (Appointment appointment : appointments) {
+            populateNames(appointment);
+            var prescriptions = new java.util.ArrayList<java.util.Map<String, Object>>();
+            prescriptionRepository.findByAppointmentId(appointment.getId()).forEach(p -> {
+                var row = new java.util.LinkedHashMap<String, Object>();
+                row.put("id", p.getId());
+                row.put("notes", p.getNotes());
+                row.put("items", prescriptionItemRepository.findByPrescriptionId(p.getId()));
+                prescriptions.add(row);
+            });
+
+            MedicalSummaryReport summary = medicalSummaryReportRepository.findByAppointmentId(appointment.getId()).orElse(null);
+
+            var row = new java.util.LinkedHashMap<String, Object>();
+            row.put("id", appointment.getId());
+            row.put("startDateTime", appointment.getStartDateTime());
+            row.put("reason", appointment.getReason());
+            row.put("status", appointment.getStatus() != null ? appointment.getStatus().name() : null);
+            row.put("diagnosis", appointment.getDiagnosis());
+            row.put("clinicalNotes", appointment.getDoctorNotes());
+            row.put("followUpInstructions", appointment.getFollowUpInstructions());
+            row.put("reviewStatus", appointment.getReviewStatus() != null ? appointment.getReviewStatus().name() : AppointmentReviewStatus.NOT_READY.name());
+            row.put("summarySentAt", summary != null ? summary.getEmailedAt() : null);
+            row.put("summaryText", summary != null ? summary.getGeneratedSummary() : null);
+            row.put("prescriptions", prescriptions);
+            appointmentRows.add(row);
+        }
+
+        var patientPayload = new java.util.LinkedHashMap<String, Object>();
+        patientPayload.put("name", patient.getFullName());
+        patientPayload.put("email", patientEmail);
+        patientPayload.put("phone", patient.getPhone());
+        patientPayload.put("dob", patient.getDob());
+        patientPayload.put("gender", patient.getGender());
+        patientPayload.put("bloodGroup", patient.getBloodGroup());
+
+        var payload = new java.util.LinkedHashMap<String, Object>();
+        payload.put("patient", patientPayload);
+        payload.put("appointments", appointmentRows);
+        return payload;
     }
 }

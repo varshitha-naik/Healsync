@@ -222,8 +222,38 @@ public class DoctorService {
             profile.setExperienceYears(request.getExperienceYears());
         if (request.getBio() != null)
             profile.setBio(request.getBio());
+        if (request.getClinicId() != null)
+            profile.setClinicId(request.getClinicId());
 
         doctorProfileRepository.save(profile);
+    }
+
+    public Map<String, Object> getDoctorProfileForAdmin(Long doctorUserId) {
+        User user = userRepository.findById(doctorUserId)
+                .orElseThrow(() -> new RuntimeException("Doctor user not found"));
+        DoctorProfile profile = doctorProfileRepository.findByUserId(doctorUserId)
+                .orElseThrow(() -> new RuntimeException("Doctor profile not found"));
+        String clinicName = clinicRepository.findById(profile.getClinicId())
+                .map(Clinic::getName).orElse("Unknown");
+
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("doctorId", doctorUserId);
+        payload.put("profileId", profile.getId());
+        payload.put("fullName", profile.getFullName());
+        payload.put("specialization", profile.getSpecialization());
+        payload.put("email", user.getEmail());
+        payload.put("licenseNumber", profile.getLicenseNumber());
+        payload.put("experienceYears", profile.getExperienceYears());
+        payload.put("bio", profile.getBio());
+        payload.put("clinicId", profile.getClinicId());
+        payload.put("clinicName", clinicName);
+        payload.put("profilePhotoUrl", resolveDoctorPhotoUrl(profile));
+        return payload;
+    }
+
+    public Map<String, Object> updateDoctorProfileForAdmin(Long doctorUserId, UpdateDoctorRequest request) {
+        updateDoctorAdmin(doctorUserId, request);
+        return getDoctorProfileForAdmin(doctorUserId);
     }
 
     public void deleteDoctorAdmin(Long userId) {

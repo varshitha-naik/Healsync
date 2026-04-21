@@ -9,7 +9,7 @@
 </head>
 
 <body>
-    <!-- /* Redesigned: Manage Doctors â€” follows clinical design system v1 */ -->
+    <!-- /* Redesigned: Manage Doctors - follows clinical design system v1 */ -->
     <div class="app-shell">
         <th:block th:replace="fragments/admin-header :: adminHeader"></th:block>
         <div class="app-main">
@@ -92,32 +92,68 @@
         </div>
     </div>
 
-    <div id="editModal" class="modal is-hidden">
-        <div class="modal-content">
-            <h2>Edit doctor</h2>
-            <form id="editDoctorForm" onsubmit="handleEditSubmit(event)" class="page-stack" style="margin-top: 16px;">
-                <input type="hidden" id="editDoctorId">
+    <div id="doctorProfileModal" class="modal is-hidden">
+        <div class="modal-content" style="max-width: 980px; width: min(980px, 95vw); max-height: 92vh; display:flex; flex-direction:column;">
+            <div class="section-header" style="padding: 18px 20px 10px; border-bottom: 1px solid var(--color-border);">
+                <div>
+                    <h2>Doctor profile</h2>
+                    <p class="section-copy">View and update the clinician profile. Email and license number are read-only.</p>
+                </div>
+            </div>
+            <div class="page-stack" style="padding: 16px 20px; overflow:auto; min-height:0; flex:1;">
+                <div id="profileModalMsg" class="alert" style="display:none;"></div>
+                <input type="hidden" id="profileDoctorId">
+
+                <div class="user-summary">
+                    <img id="profilePhotoPreview" class="avatar-circle" style="width:64px;height:64px;object-fit:cover;" src="/images/default-doctor.svg" onerror="handleDoctorImageError(this)">
+                    <div class="user-meta">
+                        <p class="user-name" id="profileNameTitle">Loading…</p>
+                        <p class="user-email" id="profileEmailTitle"></p>
+                    </div>
+                    <div class="horizontal-actions" style="margin-left:auto;">
+                        <button type="button" class="btn-secondary" onclick="openDoctorPhotoPicker()">Change photo</button>
+                        <input id="profilePhotoInput" type="file" accept=".jpg,.jpeg,.png" style="display:none;" onchange="handleDoctorPhotoSelected(event)">
+                    </div>
+                </div>
+                <p class="helper-text" id="profilePhotoHelper" style="margin-top:6px; display:none;">JPG or PNG, maximum 2 MB.</p>
+                <p class="error-text" id="profilePhotoError" style="display:none;"></p>
+
+                <div class="details-grid">
+                    <div class="detail-card">
+                        <label>Full name</label>
+                        <input id="profileFullName" type="text">
+                    </div>
+                    <div class="detail-card">
+                        <label>Specialization</label>
+                        <input id="profileSpecialization" type="text">
+                    </div>
+                    <div class="detail-card">
+                        <label>Email (read-only)</label>
+                        <input id="profileEmail" type="text" disabled>
+                    </div>
+                    <div class="detail-card">
+                        <label>License number (read-only)</label>
+                        <input id="profileLicense" type="text" disabled>
+                    </div>
+                    <div class="detail-card">
+                        <label>Experience (years)</label>
+                        <input id="profileExperience" type="number" min="0">
+                    </div>
+                    <div class="detail-card">
+                        <label>Clinic</label>
+                        <select id="profileClinic"></select>
+                    </div>
+                </div>
+
                 <div class="field">
-                    <label for="editFullName">Full name</label>
-                    <input type="text" id="editFullName" required>
+                    <label>Bio</label>
+                    <textarea id="profileBio" rows="4" placeholder="Optional clinician bio"></textarea>
                 </div>
-                <div class="field">
-                    <label for="editSpecialization">Specialization</label>
-                    <input type="text" id="editSpecialization" required>
-                </div>
-                <div class="field">
-                    <label for="editExperience">Experience (years)</label>
-                    <input type="number" id="editExperience" required min="0">
-                </div>
-                <div class="field">
-                    <label for="editBio">Bio</label>
-                    <textarea id="editBio" rows="3"></textarea>
-                </div>
-                <div class="modal-actions">
-                    <button type="button" class="btn-secondary" onclick="closeEditModal()">Cancel</button>
-                    <button type="submit" class="btn-primary" id="saveEditBtn">Save Changes</button>
-                </div>
-            </form>
+            </div>
+            <div class="modal-actions" style="padding: 12px 20px 18px; border-top: 1px solid var(--color-border);">
+                <button type="button" class="btn-secondary" onclick="closeDoctorProfileModal()">Close</button>
+                <button type="button" class="btn-primary" id="profileSaveBtn" onclick="saveDoctorProfile()">Save</button>
+            </div>
         </div>
     </div>
 
@@ -227,8 +263,8 @@
                     <td><span class="status-badge ${statusBadgeClass}">${statusText}</span></td>
                     <td class="actions-cell">
                         <div class="row-actions horizontal-actions" style="justify-content: flex-end;">
-                            <button class="btn-secondary" type="button" onclick="openViewModal(${doc.id})">View</button>
-                            <button class="btn-secondary" type="button" onclick="openEditModal(${doc.id})">Edit</button>
+                            <button class="btn-secondary" type="button" onclick="openDoctorProfile(${doc.id})">View Profile</button>
+                            <button class="btn-secondary" type="button" onclick="openDoctorProfile(${doc.id})">Edit</button>
                             <button class="${doc.status === 'ACTIVE' ? 'btn-destructive' : 'btn-primary'}" type="button" onclick="updateDoctorStatus(${doc.id}, '${doc.status === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE'}')">
                                 ${doc.status === 'ACTIVE' ? 'Deactivate' : 'Activate'}
                             </button>
@@ -315,60 +351,161 @@
             document.getElementById('viewModal').classList.add('is-hidden');
         }
 
-        function openEditModal(doctorId) {
-            const doc = doctorsData.find(d => d.id === doctorId);
-            if (!doc) return;
+        let clinicsCache = null;
+        let selectedPhotoFile = null;
+        let selectedPhotoPreviewUrl = null;
 
-            document.getElementById('editDoctorId').value = doc.id;
-            document.getElementById('editFullName').value = doc.fullName;
-            document.getElementById('editSpecialization').value = doc.specialization;
-            document.getElementById('editExperience').value = doc.experienceYears;
-            document.getElementById('editBio').value = doc.bio || '';
-            document.getElementById('editModal').classList.remove('is-hidden');
-        }
+        async function openDoctorProfile(doctorId) {
+            selectedPhotoFile = null;
+            clearPhotoError();
+            document.getElementById('profileDoctorId').value = doctorId;
+            document.getElementById('profileModalMsg').style.display = 'none';
+            document.getElementById('profileSaveBtn').disabled = false;
 
-        function closeEditModal() {
-            document.getElementById('editModal').classList.add('is-hidden');
-        }
-
-        async function handleEditSubmit(e) {
-            e.preventDefault();
-
-            const btn = document.getElementById('saveEditBtn');
-            const originalText = btn.textContent;
-            btn.textContent = 'Saving...';
-            btn.disabled = true;
-
-            const id = document.getElementById('editDoctorId').value;
-            const payload = {
-                fullName: document.getElementById('editFullName').value,
-                specialization: document.getElementById('editSpecialization').value,
-                experienceYears: parseInt(document.getElementById('editExperience').value, 10),
-                bio: document.getElementById('editBio').value
-            };
+            document.getElementById('doctorProfileModal').classList.remove('is-hidden');
+            document.getElementById('profileNameTitle').textContent = 'Loading…';
+            document.getElementById('profileEmailTitle').textContent = '';
+            document.getElementById('profilePhotoPreview').src = '/images/default-doctor.svg';
 
             try {
-                const response = await fetch(`/api/admin/doctors/${id}`, {
+                const [profileRes, clinicsRes] = await Promise.all([
+                    fetch(`/api/admin/doctors/${doctorId}`, { headers: { 'Authorization': `Bearer ${token}` } }),
+                    fetch('/api/admin/clinics', { headers: { 'Authorization': `Bearer ${token}` } })
+                ]);
+                if (!profileRes.ok) throw new Error('Failed to load doctor profile');
+                if (!clinicsRes.ok) throw new Error('Failed to load clinics');
+                const profile = await profileRes.json();
+                clinicsCache = await clinicsRes.json();
+
+                bindClinics(profile.clinicId);
+                bindProfile(profile);
+                showProfileMsg('', 'success');
+            } catch (e) {
+                showProfileMsg('Unable to load doctor profile.', 'error');
+            }
+        }
+
+        function bindProfile(profile) {
+            document.getElementById('profileNameTitle').textContent = profile.fullName || 'Doctor';
+            document.getElementById('profileEmailTitle').textContent = profile.email || '';
+            document.getElementById('profilePhotoPreview').src = escapeHtml(getDoctorPhotoUrl(profile.profilePhotoUrl));
+
+            document.getElementById('profileFullName').value = profile.fullName || '';
+            document.getElementById('profileSpecialization').value = profile.specialization || '';
+            document.getElementById('profileEmail').value = profile.email || '';
+            document.getElementById('profileLicense').value = profile.licenseNumber || '';
+            document.getElementById('profileExperience').value = profile.experienceYears ?? 0;
+            document.getElementById('profileBio').value = profile.bio || '';
+        }
+
+        function bindClinics(selectedClinicId) {
+            const select = document.getElementById('profileClinic');
+            select.innerHTML = '';
+            (clinicsCache || []).forEach(c => {
+                const opt = document.createElement('option');
+                opt.value = c.id;
+                opt.textContent = c.name;
+                if (String(c.id) === String(selectedClinicId)) opt.selected = true;
+                select.appendChild(opt);
+            });
+        }
+
+        function closeDoctorProfileModal() {
+            document.getElementById('doctorProfileModal').classList.add('is-hidden');
+            if (selectedPhotoPreviewUrl) {
+                URL.revokeObjectURL(selectedPhotoPreviewUrl);
+                selectedPhotoPreviewUrl = null;
+            }
+        }
+
+        function showProfileMsg(message, type = 'success') {
+            const el = document.getElementById('profileModalMsg');
+            if (!message) { el.style.display = 'none'; return; }
+            el.className = type === 'success' ? 'alert alert-success' : 'alert alert-danger';
+            el.textContent = message;
+            el.style.display = 'block';
+        }
+
+        function openDoctorPhotoPicker() {
+            document.getElementById('profilePhotoHelper').style.display = 'block';
+            document.getElementById('profilePhotoInput').click();
+        }
+
+        function handleDoctorPhotoSelected(event) {
+            const file = event.target.files?.[0];
+            if (!file) return;
+            const allowed = ['image/jpeg', 'image/png'];
+            if (!allowed.includes(file.type)) {
+                showPhotoError('Please upload a JPG or PNG image.');
+                event.target.value = '';
+                return;
+            }
+            if (file.size > 2 * 1024 * 1024) {
+                showPhotoError('Image must be smaller than 2 MB.');
+                event.target.value = '';
+                return;
+            }
+            clearPhotoError();
+            selectedPhotoFile = file;
+            if (selectedPhotoPreviewUrl) URL.revokeObjectURL(selectedPhotoPreviewUrl);
+            selectedPhotoPreviewUrl = URL.createObjectURL(file);
+            document.getElementById('profilePhotoPreview').src = selectedPhotoPreviewUrl;
+        }
+
+        function showPhotoError(msg) {
+            const el = document.getElementById('profilePhotoError');
+            el.textContent = msg;
+            el.style.display = 'block';
+        }
+
+        function clearPhotoError() {
+            const el = document.getElementById('profilePhotoError');
+            el.textContent = '';
+            el.style.display = 'none';
+        }
+
+        async function saveDoctorProfile() {
+            const btn = document.getElementById('profileSaveBtn');
+            btn.disabled = true;
+            const doctorId = document.getElementById('profileDoctorId').value;
+            const payload = {
+                fullName: document.getElementById('profileFullName').value.trim(),
+                specialization: document.getElementById('profileSpecialization').value.trim(),
+                experienceYears: parseInt(document.getElementById('profileExperience').value || '0', 10),
+                bio: document.getElementById('profileBio').value.trim(),
+                clinicId: parseInt(document.getElementById('profileClinic').value || '0', 10)
+            };
+
+            if (!payload.fullName || !payload.specialization) {
+                showProfileMsg('Name and specialization are required.', 'error');
+                btn.disabled = false;
+                return;
+            }
+
+            try {
+                const res = await fetch(`/api/admin/doctors/${doctorId}`, {
                     method: 'PUT',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${token}`
-                    },
+                    headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload)
                 });
+                if (!res.ok) throw new Error('Failed to save doctor profile');
 
-                if (!response.ok) {
-                    throw new Error('Failed to update doctor');
+                if (selectedPhotoFile) {
+                    const fd = new FormData();
+                    fd.append('file', selectedPhotoFile);
+                    const photoRes = await fetch(`/api/admin/doctors/${doctorId}/photo`, {
+                        method: 'POST',
+                        headers: { 'Authorization': `Bearer ${token}` },
+                        body: fd
+                    });
+                    if (!photoRes.ok) throw new Error('Failed to upload photo');
                 }
 
-                showToast('Doctor updated successfully', 'success');
-                closeEditModal();
-                loadDoctors();
-            } catch (error) {
-                console.error(error);
-                showToast('Failed to update doctor', 'error');
+                showProfileMsg('Doctor profile updated successfully.', 'success');
+                await loadDoctors();
+            } catch (e) {
+                showProfileMsg('Unable to save doctor profile.', 'error');
             } finally {
-                btn.textContent = originalText;
                 btn.disabled = false;
             }
         }

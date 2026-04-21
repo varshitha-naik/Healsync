@@ -2,6 +2,7 @@ package com.healsync.controller;
 
 import com.healsync.service.AuthService;
 import com.healsync.service.AdminMedicalSummaryService;
+import com.healsync.service.AppointmentService;
 import com.healsync.service.DoctorService;
 import com.healsync.dto.AdminDashboardSummaryDTO;
 import com.healsync.dto.AdminPatientsByDoctorDTO;
@@ -14,11 +15,15 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 import java.util.Map;
 import com.healsync.repository.UserRepository;
 import com.healsync.dto.UpdateMedicalSummaryRequest;
+import com.healsync.repository.ClinicRepository;
+import com.healsync.repository.DoctorProfileRepository;
+import com.healsync.service.FileStorageService;
 
 @RestController
 @RequestMapping("/api/admin")
@@ -29,7 +34,11 @@ public class AdminController {
     private final AuthService authService;
     private final DoctorService doctorService;
     private final AdminMedicalSummaryService adminMedicalSummaryService;
+    private final AppointmentService appointmentService;
     private final UserRepository userRepository;
+    private final ClinicRepository clinicRepository;
+    private final DoctorProfileRepository doctorProfileRepository;
+    private final FileStorageService fileStorageService;
 
     @PostMapping("/doctors")
     public ResponseEntity<?> createDoctor(@RequestBody CreateDoctorRequest request) {
@@ -52,12 +61,6 @@ public class AdminController {
         return ResponseEntity.ok(doctorService.getPatientsGroupedByDoctorForAdmin());
     }
 
-    @PutMapping("/doctors/{id}")
-    public ResponseEntity<?> updateDoctor(@PathVariable Long id, @RequestBody UpdateDoctorRequest request) {
-        doctorService.updateDoctorAdmin(id, request);
-        return ResponseEntity.ok().body("{\"message\": \"Doctor updated successfully\"}");
-    }
-
     @PutMapping("/doctors/{id}/status")
     public ResponseEntity<?> updateDoctorStatus(@PathVariable Long id, @RequestParam UserStatus status) {
         doctorService.updateDoctorStatusAdmin(id, status);
@@ -70,9 +73,44 @@ public class AdminController {
         return ResponseEntity.ok().body("{\"message\": \"Doctor deleted successfully\"}");
     }
 
+    @GetMapping("/doctors/{id}")
+    public ResponseEntity<Map<String, Object>> getDoctorProfile(@PathVariable Long id) {
+        return ResponseEntity.ok(doctorService.getDoctorProfileForAdmin(id));
+    }
+
+    @PutMapping("/doctors/{id}")
+    public ResponseEntity<Map<String, Object>> updateDoctorProfile(@PathVariable Long id, @RequestBody UpdateDoctorRequest request) {
+        doctorService.updateDoctorAdmin(id, request);
+        return ResponseEntity.ok(doctorService.getDoctorProfileForAdmin(id));
+    }
+
+    @PostMapping("/doctors/{id}/photo")
+    public ResponseEntity<?> uploadDoctorPhoto(@PathVariable Long id, @RequestParam("file") MultipartFile file) {
+        var profile = doctorProfileRepository.findByUserId(id)
+                .orElseThrow(() -> new RuntimeException("Doctor profile not found"));
+        String url = fileStorageService.storeFile(file);
+        profile.setProfilePhotoUrl(url);
+        var saved = doctorProfileRepository.save(profile);
+        return ResponseEntity.ok(Map.of(
+                "message", "Profile photo updated",
+                "url", fileStorageService.withCacheBusting(saved.getProfilePhotoUrl(), saved.getUpdatedAt())));
+    }
+
+    @GetMapping("/clinics")
+    public ResponseEntity<?> getClinics() {
+        return ResponseEntity.ok(clinicRepository.findAll());
+    }
+
     @GetMapping("/medical-summaries")
     public ResponseEntity<List<Map<String, Object>>> getPendingMedicalSummaries() {
         return ResponseEntity.ok(adminMedicalSummaryService.getPendingMedicalSummaries());
+    }
+
+    @GetMapping("/patients/{patientId}/history")
+    public ResponseEntity<Map<String, Object>> getPatientHistoryByDoctor(
+            @PathVariable Long patientId,
+            @RequestParam Long doctorId) {
+        return ResponseEntity.ok(appointmentService.getAdminPatientHistory(patientId, doctorId));
     }
 
     @GetMapping("/medical-summaries/{appointmentId}")

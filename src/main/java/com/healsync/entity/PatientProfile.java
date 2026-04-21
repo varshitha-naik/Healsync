@@ -44,4 +44,7 @@ public class PatientProfile {
 
     @Column(length = 20)
     private String emergencyContactPhone;
+
+    @Column(length = 500)
+    private String profilePhotoUrl;
 }

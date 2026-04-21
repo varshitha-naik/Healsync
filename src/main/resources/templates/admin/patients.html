@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Patients - HealSync Admin</title>
+    <link rel="stylesheet" th:href="@{/css/design-system.css}" href="/css/design-system.css">
+    <style>
+        .doctor-card {
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius-sm);
+            overflow: hidden;
+            background: var(--color-surface);
+        }
+        .doctor-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            padding: 14px 16px;
+            cursor: pointer;
+        }
+        .doctor-header:hover { background: var(--color-surface-muted); }
+        .doctor-header-left { display: flex; align-items: center; gap: 12px; min-width: 0; }
+        .doctor-meta { min-width: 0; }
+        .doctor-meta .name { font-weight: 700; margin: 0; }
+        .doctor-meta .sub { margin: 0; color: var(--color-text-secondary); font-size: 0.9rem; }
+        .doctor-header-right { display: flex; align-items: center; gap: 12px; }
+        .chevron {
+            width: 28px; height: 28px; border-radius: 999px;
+            border: 1px solid var(--color-border);
+            display: inline-flex; align-items: center; justify-content: center;
+            background: var(--color-surface);
+        }
+        .doctor-patients {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 240ms ease;
+            border-top: 1px solid transparent;
+            background: #fff;
+        }
+        .doctor-card.expanded .doctor-patients {
+            max-height: 900px;
+            border-top-color: var(--color-border);
+        }
+        .doctor-patients-inner { padding: 12px 16px 16px; display: grid; gap: 10px; }
+        .patient-row {
+            display: grid;
+            grid-template-columns: 1.4fr 1.6fr 1.2fr 0.9fr auto;
+            gap: 10px;
+            align-items: center;
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius-sm);
+            padding: 10px 12px;
+            background: var(--color-surface);
+        }
+        @media (max-width: 900px) {
+            .patient-row { grid-template-columns: 1fr; }
+        }
+        .history-modal-content {
+            max-width: 980px;
+            width: min(980px, 95vw);
+            max-height: 92vh;
+            display: flex;
+            flex-direction: column;
+            padding: 0;
+            overflow: hidden;
+        }
+        .history-modal-header {
+            padding: 16px 20px 10px;
+            border-bottom: 1px solid var(--color-border);
+            background: var(--color-surface);
+            flex-shrink: 0;
+        }
+        .history-modal-body {
+            padding: 14px 20px;
+            overflow-y: auto;
+            min-height: 0;
+            flex: 1;
+            display: grid;
+            gap: 12px;
+        }
+        .history-modal-footer {
+            padding: 10px 20px 16px;
+            border-top: 1px solid var(--color-border);
+            flex-shrink: 0;
+            background: var(--color-surface);
+        }
+        .appt-accordion {
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius-sm);
+            overflow: hidden;
+        }
+        .appt-accordion-btn {
+            width: 100%;
+            border: none;
+            background: transparent;
+            padding: 12px 14px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+        }
+        .appt-accordion-panel {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 240ms ease;
+            border-top: 1px solid transparent;
+        }
+        .appt-accordion.expanded .appt-accordion-panel {
+            max-height: 1200px;
+            border-top-color: var(--color-border);
+        }
+        .appt-accordion-inner {
+            padding: 12px 14px;
+            display: grid;
+            gap: 10px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="app-shell">
+        <th:block th:replace="fragments/admin-header :: adminHeader"></th:block>
+        <div class="app-main">
+            <header class="topbar">
+                <div class="topbar-title-group">
+                    <p class="breadcrumb">Admin / Patients</p>
+                    <h1>Patients by doctor</h1>
+                </div>
+            </header>
+
+            <main class="page-content">
+                <div class="page-stack">
+                    <section class="card">
+                        <div class="section-header">
+                            <div>
+                                <h2>Doctor assignments</h2>
+                                <p class="section-copy">Expand a doctor to view assigned patients and latest appointment status.</p>
+                            </div>
+                        </div>
+                        <div id="pageMsg" class="alert" style="display:none;"></div>
+                        <div id="loadingState" class="loading-block">
+                            <div class="skeleton-line"></div>
+                            <div class="skeleton-line"></div>
+                            <div class="skeleton-line"></div>
+                        </div>
+                        <div id="doctorsContainer" class="page-stack" style="display:none;"></div>
+                    </section>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <div id="historyModal" class="modal hidden">
+        <div class="modal-content history-modal-content">
+            <div class="history-modal-header">
+                <h2>Patient History</h2>
+            </div>
+            <div class="history-modal-body" id="historyModalBody">
+                <p>Loading...</p>
+            </div>
+            <div class="history-modal-footer modal-actions">
+                <button type="button" class="btn-secondary" onclick="closeHistoryModal()">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const token = localStorage.getItem('jwtToken');
+        const userRole = localStorage.getItem('userRole');
+        let expandedDoctorId = null;
+        let expandedHistoryAppointmentId = null;
+        let doctors = [];
+
+        if (!token || userRole !== 'ADMIN') {
+            window.location.href = '/login';
+        } else {
+            loadDoctors();
+        }
+
+        async function loadDoctors() {
+            try {
+                const res = await fetch('/api/admin/patients-by-doctor', { headers: { Authorization: `Bearer ${token}` } });
+                if (!res.ok) throw new Error('Failed to load doctors');
+                doctors = await res.json();
+                renderDoctors();
+                document.getElementById('loadingState').style.display = 'none';
+                document.getElementById('doctorsContainer').style.display = 'grid';
+                showMsg('');
+            } catch (e) {
+                document.getElementById('loadingState').style.display = 'none';
+                showMsg('Unable to load patients list.', true);
+            }
+        }
+
+        function renderDoctors() {
+            const container = document.getElementById('doctorsContainer');
+            container.innerHTML = '';
+            if (!doctors.length) {
+                container.innerHTML = '<div class="empty-state"><p>No doctors found.</p></div>';
+                return;
+            }
+            doctors.forEach(doc => {
+                const card = document.createElement('div');
+                card.className = `doctor-card ${expandedDoctorId === doc.doctorId ? 'expanded' : ''}`;
+                card.dataset.doctorId = doc.doctorId;
+
+                const patientCount = Array.isArray(doc.patients) ? doc.patients.length : 0;
+                card.innerHTML = `
+                    <div class="doctor-header" onclick="toggleDoctor(${doc.doctorId})">
+                        <div class="doctor-header-left">
+                            <img class="avatar-circle" style="object-fit:cover;" src="${escapeHtml(doc.profilePhotoUrl || '/images/default-doctor.svg')}" onerror="this.src='/images/default-doctor.svg'">
+                            <div class="doctor-meta">
+                                <p class="name">${escapeHtml(doc.doctorName || 'Doctor')}</p>
+                                <p class="sub">${escapeHtml(doc.specialization || '—')} • ${escapeHtml(doc.doctorEmail || '')}</p>
+                            </div>
+                        </div>
+                        <div class="doctor-header-right">
+                            <span class="status-badge status-availability-none">${patientCount} patients</span>
+                            <span class="chevron">▾</span>
+                        </div>
+                    </div>
+                    <div class="doctor-patients">
+                        <div class="doctor-patients-inner" id="patients-${doc.doctorId}"></div>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+
+            // Only render patients for expanded doctor
+            if (expandedDoctorId) {
+                renderPatientsFor(expandedDoctorId);
+            }
+        }
+
+        function toggleDoctor(doctorId) {
+            expandedDoctorId = expandedDoctorId === doctorId ? null : doctorId;
+            renderDoctors();
+        }
+
+        function renderPatientsFor(doctorId) {
+            const doc = doctors.find(d => d.doctorId === doctorId);
+            const list = document.getElementById(`patients-${doctorId}`);
+            if (!list) return;
+            const patients = Array.isArray(doc?.patients) ? doc.patients : [];
+            if (!patients.length) {
+                list.innerHTML = '<div class="empty-state"><p>No patients assigned yet.</p></div>';
+                return;
+            }
+            list.innerHTML = patients.map(p => {
+                const lastVisit = p.lastAppointmentDate ? new Date(p.lastAppointmentDate).toLocaleString() : '—';
+                const status = (p.appointmentStatus || '').toUpperCase();
+                const badgeClass = status ? (status === 'REQUESTED' ? 'status-requested' : `status-${status.toLowerCase()}`) : 'status-requested';
+                const viewBtn = p.patientId ? `<button type="button" class="btn-secondary" onclick="openHistoryModal(${p.patientId}, ${doctorId}); event.stopPropagation();">View History</button>` : '';
+                return `
+                    <div class="patient-row">
+                        <div><strong>${escapeHtml(p.patientName || 'Patient')}</strong></div>
+                        <div class="user-email">${escapeHtml(p.email || '')}</div>
+                        <div>${escapeHtml(lastVisit)}</div>
+                        <div><span class="status-badge ${badgeClass}">${escapeHtml(status || '—')}</span></div>
+                        <div class="horizontal-actions">${viewBtn}</div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function showMsg(message, isError = false) {
+            const el = document.getElementById('pageMsg');
+            if (!message) { el.style.display = 'none'; return; }
+            el.className = isError ? 'alert alert-danger' : 'alert alert-success';
+            el.textContent = message;
+            el.style.display = 'block';
+        }
+
+        function escapeHtml(value) {
+            return String(value || '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+        }
+
+        async function openHistoryModal(patientId, doctorId) {
+            expandedHistoryAppointmentId = null;
+            const body = document.getElementById('historyModalBody');
+            body.innerHTML = '<p>Loading...</p>';
+            document.getElementById('historyModal').classList.remove('hidden');
+            try {
+                const res = await fetch(`/api/admin/patients/${patientId}/history?doctorId=${doctorId}`, {
+                    headers: { Authorization: `Bearer ${token}` }
+                });
+                if (!res.ok) throw new Error('Failed to load patient history');
+                const payload = await res.json();
+                renderHistoryModal(payload);
+            } catch (e) {
+                body.innerHTML = '<div class="empty-state"><p>No appointment history found.</p></div>';
+            }
+        }
+
+        function renderHistoryModal(payload) {
+            const body = document.getElementById('historyModalBody');
+            body.dataset.payload = JSON.stringify(payload || {});
+            const patient = payload?.patient || {};
+            const appointments = Array.isArray(payload?.appointments) ? payload.appointments : [];
+
+            if (appointments.length > 0 && !expandedHistoryAppointmentId) {
+                expandedHistoryAppointmentId = appointments[0].id;
+            }
+
+            const patientInfo = `
+                <section class="details-grid">
+                    <div class="detail-card"><label>Name</label><strong>${escapeHtml(patient.name || '—')}</strong></div>
+                    <div class="detail-card"><label>Email</label><strong>${escapeHtml(patient.email || '—')}</strong></div>
+                    <div class="detail-card"><label>Phone</label><strong>${escapeHtml(patient.phone || '—')}</strong></div>
+                    <div class="detail-card"><label>DOB</label><strong>${escapeHtml(patient.dob || '—')}</strong></div>
+                    <div class="detail-card"><label>Gender</label><strong>${escapeHtml(patient.gender || '—')}</strong></div>
+                    <div class="detail-card"><label>Blood Group</label><strong>${escapeHtml(patient.bloodGroup || '—')}</strong></div>
+                </section>`;
+
+            if (!appointments.length) {
+                body.innerHTML = `${patientInfo}<div class="empty-state"><p>No appointment history found.</p></div>`;
+                return;
+            }
+
+            const accordions = appointments.map(app => {
+                const expanded = expandedHistoryAppointmentId === app.id;
+                const dt = app.startDateTime ? new Date(app.startDateTime).toLocaleString() : '—';
+                const apptStatus = (app.status || '').toUpperCase();
+                const statusBadge = apptStatus ? (apptStatus === 'REQUESTED' ? 'status-requested' : `status-${apptStatus.toLowerCase()}`) : 'status-requested';
+                const reviewStatus = (app.reviewStatus || 'NOT_READY').toUpperCase();
+                const reviewBadge = reviewStatus === 'SUMMARY_SENT'
+                    ? '<span class="status-badge status-availability-open">Summary Sent</span>'
+                    : reviewStatus === 'READY_FOR_ADMIN'
+                        ? '<span class="status-badge status-requested">Ready for Admin Review</span>'
+                        : '<span class="status-badge status-availability-none">Not Ready</span>';
+                const sentAt = app.summarySentAt ? new Date(app.summarySentAt).toLocaleString() : '';
+
+                const prescriptions = Array.isArray(app.prescriptions) ? app.prescriptions : [];
+                const prescriptionsHtml = prescriptions.length
+                    ? prescriptions.map(p => {
+                        const items = Array.isArray(p.items) ? p.items : [];
+                        if (!items.length) {
+                            return `<p>No medicines listed.</p>`;
+                        }
+                        return items.map(i => `<p>${escapeHtml(i.medicineName || 'Medicine')} - ${escapeHtml(i.dosage || '')}, ${escapeHtml(i.frequency || '')}, ${escapeHtml(String(i.durationDays ?? ''))} day(s)</p>`).join('');
+                    }).join('')
+                    : '<p>No prescriptions recorded.</p>';
+
+                const viewSummaryBtn = app.summarySentAt && app.summaryText
+                    ? `<button type="button" class="btn-secondary" onclick="toggleSummaryText(${app.id})">View Summary</button><pre id="summary-${app.id}" style="display:none; white-space:pre-wrap; border:1px solid var(--color-border); border-radius:8px; padding:10px;">${escapeHtml(app.summaryText)}</pre>`
+                    : '';
+
+                return `
+                    <article class="appt-accordion ${expanded ? 'expanded' : ''}">
+                        <button class="appt-accordion-btn" type="button" onclick="toggleHistoryAppointment(${app.id})">
+                            <span><strong>${escapeHtml(dt)}</strong></span>
+                            <span class="horizontal-actions">
+                                <span class="status-badge ${statusBadge}">${escapeHtml(apptStatus || '—')}</span>
+                                ${reviewBadge}
+                            </span>
+                        </button>
+                        <div class="appt-accordion-panel">
+                            <div class="appt-accordion-inner">
+                                <p><strong>Reason:</strong> ${escapeHtml(app.reason || '—')}</p>
+                                <p><strong>Diagnosis:</strong> ${escapeHtml(app.diagnosis || '—')}</p>
+                                <p><strong>Clinical notes:</strong> ${escapeHtml(app.clinicalNotes || '—')}</p>
+                                <p><strong>Follow-up instructions:</strong> ${escapeHtml(app.followUpInstructions || '—')}</p>
+                                <div>
+                                    <h3>Prescriptions</h3>
+                                    ${prescriptionsHtml}
+                                </div>
+                                ${sentAt ? `<p><strong>Summary sent at:</strong> ${escapeHtml(sentAt)}</p>` : ''}
+                                ${viewSummaryBtn}
+                            </div>
+                        </div>
+                    </article>`;
+            }).join('');
+
+            body.innerHTML = `${patientInfo}<section class="page-stack">${accordions}</section>`;
+        }
+
+        function toggleHistoryAppointment(appointmentId) {
+            expandedHistoryAppointmentId = expandedHistoryAppointmentId === appointmentId ? null : appointmentId;
+            const modalBody = document.getElementById('historyModalBody');
+            if (!modalBody.dataset.payload) return;
+            renderHistoryModal(JSON.parse(modalBody.dataset.payload));
+        }
+
+        function toggleSummaryText(appointmentId) {
+            const el = document.getElementById(`summary-${appointmentId}`);
+            if (!el) return;
+            el.style.display = el.style.display === 'none' ? 'block' : 'none';
+        }
+
+        function closeHistoryModal() {
+            document.getElementById('historyModal').classList.add('hidden');
+            expandedHistoryAppointmentId = null;
+        }
+    </script>
+</body>
+
+</html>

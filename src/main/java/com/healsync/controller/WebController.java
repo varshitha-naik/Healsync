@@ -59,7 +59,12 @@ public class WebController {
 
     @GetMapping("/admin/users")
     public String adminUsers() {
-        return "admin/users";
+        return "admin/patients";
+    }
+
+    @GetMapping("/admin/patients")
+    public String adminPatients() {
+        return "admin/patients";
     }
 
     @GetMapping("/profile")
@@ -90,6 +95,11 @@ public class WebController {
     @GetMapping("/patient/medical-history")
     public String medicalHistory() {
         return "patient/medical-history";
+    }
+
+    @GetMapping("/patient/profile")
+    public String patientProfile() {
+        return "patient/profile";
     }
 
     @GetMapping("/appointments")

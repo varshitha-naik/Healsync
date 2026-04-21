@@ -9,7 +9,7 @@
 </head>
 
 <body>
-    <!-- /* Redesigned: Patient Appointments â€” follows clinical design system v1 */ -->
+    <!-- /* Redesigned: Patient Appointments - follows clinical design system v1 */ -->
     <div class="app-shell">
         <div th:replace="fragments/patient-header :: header"></div>
         <div class="app-main">
@@ -315,6 +315,10 @@
 
         window.onload = function () {
             loadAppointments();
+            const rescheduleId = new URLSearchParams(window.location.search).get('reschedule');
+            if (rescheduleId) {
+                showSuccess('Select a new date and time, then book a replacement appointment.');
+            }
             ['specialization', 'start', 'end'].forEach(id => {
                 const el = document.getElementById(id);
                 if (el) el.addEventListener('input', hideErrorMessage);

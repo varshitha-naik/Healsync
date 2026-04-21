@@ -9,7 +9,7 @@
 </head>
 
 <body>
-    <!-- /* Redesigned: Patient Dashboard â€” follows clinical design system v1 */ -->
+    <!-- /* Redesigned: Patient Dashboard - follows clinical design system v1 */ -->
     <div class="app-shell">
         <div th:replace="fragments/patient-header :: header"></div>
         <div class="app-main">
@@ -27,22 +27,20 @@
                 </div>
 
                 <div id="dashboardContent" class="page-stack" style="display: none;">
-                    <section class="hero-card">
+                    <section class="hero-card" id="nextAppointmentCard">
                         <div class="section-header">
                             <div>
                                 <h2>Your next appointment</h2>
                                 <p class="section-copy">Everything you need for your next visit in one place.</p>
                             </div>
-                            <span class="status-badge status-confirmed">Confirmed</span>
+                            <span class="status-badge status-requested" id="nextApptStatus">Requested</span>
                         </div>
-                        <div class="inline-meta">
-                            <span>Dr. Sarah Smith</span>
-                            <span>Friday, April 17 at 10:00 AM</span>
-                            <span>HealSync Medical Center</span>
+                        <div class="inline-meta" id="nextAppointmentMeta">
+                            <span>No upcoming appointments scheduled.</span>
                         </div>
-                        <div class="horizontal-actions">
-                            <a href="/patient/appointments" class="btn-primary">Reschedule</a>
-                            <a href="/patient/appointments" class="btn-secondary">Cancel appointment</a>
+                        <div class="horizontal-actions" id="nextAppointmentActions" style="display:none;">
+                            <a href="/patient/appointments" class="btn-primary" id="rescheduleBtn">Reschedule</a>
+                            <button type="button" class="btn-secondary" id="cancelBtn" onclick="cancelNextAppointment()">Cancel appointment</button>
                         </div>
                     </section>
 
@@ -60,21 +58,9 @@
                                     <p class="section-copy">Recent visits and care interactions.</p>
                                 </div>
                             </div>
-                            <div class="appointment-history">
-                                <article class="history-card highlighted">
-                                    <div class="section-header" style="margin-bottom: 8px;">
-                                        <h3>Annual physical</h3>
-                                        <span class="status-badge status-completed">Completed</span>
-                                    </div>
-                                    <p>Dr. Sarah Smith â€¢ March 22, 2026</p>
-                                </article>
-                                <article class="history-card">
-                                    <div class="section-header" style="margin-bottom: 8px;">
-                                        <h3>Dermatology review</h3>
-                                        <span class="status-badge status-cancelled">Cancelled</span>
-                                    </div>
-                                    <p>Dr. Priya Patel â€¢ February 14, 2026</p>
-                                </article>
+                            <div id="historyMessage" class="helper-text" style="margin-bottom:8px; display:none;"></div>
+                            <div class="appointment-history" id="recentHistoryList">
+                                <div class="empty-state"><p>Open My Appointments to view your complete timeline.</p></div>
                             </div>
                         </section>
 
@@ -96,32 +82,181 @@
         </div>
     </div>
 
+    <div id="dashboardMessage" class="alert alert-danger" style="display:none;"></div>
+
     <script>
         const token = localStorage.getItem('jwtToken');
         const userRole = localStorage.getItem('userRole');
+        let nextAppointmentId = null;
 
         if (!token) {
             window.location.href = '/login';
         } else if (userRole !== 'PATIENT') {
-            alert('Access denied. Patient role required.');
             window.location.href = '/login';
         } else {
             loadDashboard();
         }
 
-        async function loadDashboard() {
+        async function loadDashboard(options = {}) {
+            const keepMessage = !!options.keepMessage;
             try {
-                setTimeout(() => {
-                    document.getElementById('upcomingCount').textContent = '1';
-                    document.getElementById('prescriptionCount').textContent = '3';
-                    document.getElementById('familyCount').textContent = '2';
-                    document.getElementById('loadingState').style.display = 'none';
-                    document.getElementById('dashboardContent').style.display = 'grid';
-                }, 500);
+                const [summaryResult, appointmentsResult] = await Promise.allSettled([
+                    fetch('/api/patient/dashboard-summary', {
+                        headers: { 'Authorization': `Bearer ${token}` }
+                    }),
+                    fetch('/api/patient/appointments', {
+                        headers: { 'Authorization': `Bearer ${token}` }
+                    })
+                ]);
+
+                const summary = await parseJsonSafe(summaryResult, {
+                    upcomingAppointments: 0,
+                    prescriptionsCount: 0,
+                    familyMembersCount: 0,
+                    nextAppointment: null
+                });
+                const appointments = await parseJsonSafe(appointmentsResult, []);
+
+                document.getElementById('upcomingCount').textContent = summary.upcomingAppointments ?? 0;
+                document.getElementById('prescriptionCount').textContent = summary.prescriptionsCount ?? 0;
+                document.getElementById('familyCount').textContent = summary.familyMembersCount ?? 0;
+                renderNextAppointment(summary.nextAppointment ?? null);
+                renderRecentHistory(Array.isArray(appointments) ? appointments : []);
+
+                const summaryFailed = !isRequestSuccess(summaryResult);
+                const historyFailed = !isRequestSuccess(appointmentsResult);
+                if (historyFailed) {
+                    showHistoryMessage("Unable to load recent appointments.");
+                } else {
+                    showHistoryMessage("");
+                }
+                if (summaryFailed && historyFailed) {
+                    showMessage('Failed to load dashboard data.');
+                } else if (!keepMessage) {
+                    showMessage('');
+                }
             } catch (error) {
                 console.error('Error loading dashboard:', error);
-                alert('Failed to load dashboard data');
+                showMessage('Failed to load dashboard data.');
+                renderNextAppointment(null);
+                renderRecentHistory([]);
+                showHistoryMessage("Unable to load recent appointments.");
+            } finally {
+                document.getElementById('loadingState').style.display = 'none';
+                document.getElementById('dashboardContent').style.display = 'grid';
             }
+        }
+
+        async function parseJsonSafe(result, fallback) {
+            try {
+                if (result.status !== 'fulfilled') return fallback;
+                const response = result.value;
+                if (!response.ok) return fallback;
+                const data = await response.json();
+                return data ?? fallback;
+            } catch (_e) {
+                return fallback;
+            }
+        }
+
+        function isRequestSuccess(result) {
+            return result.status === 'fulfilled' && !!result.value?.ok;
+        }
+
+        function renderRecentHistory(appointments) {
+            const listEl = document.getElementById('recentHistoryList');
+            const now = new Date();
+            const recent = (appointments || [])
+                .filter(a => a.startDateTime && new Date(a.startDateTime) <= now)
+                .sort((a, b) => new Date(b.startDateTime) - new Date(a.startDateTime))
+                .slice(0, 3);
+
+            if (!recent.length) {
+                listEl.innerHTML = '<div class="empty-state"><p>No recent appointments.</p></div>';
+                return;
+            }
+
+            listEl.innerHTML = recent.map(app => {
+                const doctor = escapeHtml(app.doctorName || 'Doctor');
+                const when = app.startDateTime ? new Date(app.startDateTime).toLocaleDateString() : 'N/A';
+                const status = escapeHtml(app.status || 'REQUESTED');
+                const badgeClass = status === 'REQUESTED' ? 'status-requested' : `status-${status.toLowerCase()}`;
+                return `<article class="history-card"><div class="section-header" style="margin-bottom:8px;"><h3>${doctor}</h3><span class="status-badge ${badgeClass}">${status}</span></div><p>${escapeHtml(app.reason || 'Consultation')} • ${escapeHtml(when)}</p></article>`;
+            }).join('');
+        }
+
+        function showHistoryMessage(message) {
+            const el = document.getElementById('historyMessage');
+            if (!message) {
+                el.style.display = 'none';
+                el.textContent = '';
+                return;
+            }
+            el.style.display = 'block';
+            el.textContent = message;
+        }
+
+        function renderNextAppointment(nextAppointment) {
+            const meta = document.getElementById('nextAppointmentMeta');
+            const status = document.getElementById('nextApptStatus');
+            const actions = document.getElementById('nextAppointmentActions');
+            const rescheduleBtn = document.getElementById('rescheduleBtn');
+            nextAppointmentId = nextAppointment?.id || null;
+
+            if (!nextAppointmentId) {
+                status.style.display = 'none';
+                actions.style.display = 'none';
+                meta.innerHTML = '<span>No upcoming appointments scheduled.</span>';
+                return;
+            }
+            const when = nextAppointment.startDateTime ? new Date(nextAppointment.startDateTime).toLocaleString() : 'Time not available';
+            status.style.display = 'inline-flex';
+            status.textContent = nextAppointment.status || 'REQUESTED';
+            status.className = `status-badge ${(nextAppointment.status || '').toUpperCase() === 'CONFIRMED' ? 'status-confirmed' : 'status-requested'}`;
+            meta.innerHTML = `
+                <span>${escapeHtml(nextAppointment.doctorName || 'Doctor')}</span>
+                <span>${escapeHtml(when)}</span>
+                <span>${escapeHtml(nextAppointment.clinicName || 'Clinic')}</span>
+            `;
+            actions.style.display = 'flex';
+            rescheduleBtn.href = `/patient/appointments?reschedule=${nextAppointmentId}`;
+        }
+
+        async function cancelNextAppointment() {
+            if (!nextAppointmentId) return;
+            try {
+                const response = await fetch(`/api/appointments/${nextAppointmentId}/cancel`, {
+                    method: 'PUT',
+                    headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ reason: 'Cancelled by patient from dashboard.' })
+                });
+                if (!response.ok) throw new Error('Unable to cancel appointment.');
+                showMessage('Appointment cancelled successfully.', 'success');
+                await loadDashboard({ keepMessage: true });
+            } catch (error) {
+                showMessage(error.message || 'Unable to cancel appointment.');
+            }
+        }
+
+        function showMessage(message, type = 'error') {
+            const el = document.getElementById('dashboardMessage');
+            if (!message) {
+                el.style.display = 'none';
+                return;
+            }
+            el.className = type === 'success' ? 'alert alert-success' : 'alert alert-danger';
+            el.textContent = message;
+            el.style.display = 'block';
+        }
+
+        function escapeHtml(unsafe) {
+            if (!unsafe) return '';
+            return String(unsafe)
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
         }
     </script>
 </body>
